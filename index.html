@@ -1,109 +1,2010 @@
-# -*- coding: utf-8 -*-
-"""
-기기/공정 설정.
-원본 tkinter 프로그램(기기가동기록_K940.py)의 DEVICES 딕셔너리를 그대로 이식했습니다.
-기기가동_기록서_웹앱_server/index.html 의
-PRODUCT_DEVICE_MAP / DEVICE_LOCATION_MAP / DEVICE_PROCESS_MAP 기준.
-"""
-import os
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>기기가동 기록서</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --steel-1:#1b1f23;
+    --steel-2:#262b30;
+    --steel-3:#33393f;
+    --steel-line:#3d444b;
+    --paper:#f6f1e4;
+    --paper-2:#efe8d6;
+    --paper-line:#cdbf9c;
+    --ink:#242019;
+    --ink-soft:#5b5346;
+    --amber:#e2a13a;
+    --amber-dark:#b97e22;
+    --teal:#33645f;
+    --teal-dark:#234642;
+    --stamp:#a8332a;
+    --danger:#a8332a;
+    --off-white:#f2ede2;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--steel-1);
+    font-family:'Noto Sans KR',sans-serif;
+    color:var(--off-white);
+    min-height:100vh;
+  }
+  ::selection{background:var(--amber);color:var(--ink);}
+  input,select,textarea,button{font-family:inherit;}
 
-[18 lines collapsed]
+  /* ---------- utility bar textures ---------- */
+  .hazard-strip{
+    height:6px;
+    background:repeating-linear-gradient(135deg, var(--amber) 0 14px, var(--steel-1) 14px 28px);
+    opacity:.9;
+  }
 
-# 작업자/확인자 기본 목록 (계정이 없어도 선택 가능)
-STAFF_NAMES = ("김희두", "김봉수", "조권희", "박상욱")
-# 기기별 작업공정 (웹앱 DEVICE_PROCESS_MAP 과 동일)
-_RS = {"1": "정제", "2": "CS"}
-_NF = {"1": "여과", "2": "CS"}
-_VD_VACUUM = {"1": "건조", "2": "CS"}  # VD-101~104
-_VD_DRY = {"1": "건조", "2": "CS"}         # VD-105, VD-201, VD-202
-# 기기명 -> 설치장소
-_LOC = {
-    "RS-201": "합성동 2층", "RS-202": "합성동 2층", "RG-203": "합성동 2층",
-    "RS-204": "합성동 2층", "RS-205": "합성동 2층", "RG-206": "합성동 2층",
-    "RS-301": "합성동 3층", "RS-302": "합성동 3층", "RG-205": "합성동 2층",
-    "NF-101": "합성동 1층", "NF-102": "합성동 1층", "NF-103": "합성동 1층",
-    "NF-104": "합성동 1층", "NF-105": "합성동 1층", "NF-106": "합성동 1층",
-    "NF-201": "합성동 2층", "NF-202": "합성동 2층",
-    "VD-101": "건조실1", "VD-102": "건조실2", "VD-103": "건조실3",
-    "VD-104": "건조실4", "VD-105": "건조실5",
-    "VD-201": "건조실2층1", "VD-202": "건조실2층2",
+  /* ---------- LOGIN ---------- */
+  #login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .login-card{
+    width:100%;
+    max-width:380px;
+    background:var(--steel-2);
+    border:1px solid var(--steel-line);
+    border-radius:4px;
+    padding:0 0 28px 0;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.45);
+  }
+  .login-head{
+    padding:28px 28px 18px 28px;
+    border-bottom:1px solid var(--steel-line);
+  }
+  .plate-label{
+    font-family:'Oswald',sans-serif;
+    letter-spacing:.18em;
+    font-size:11px;
+    color:var(--amber);
+    font-weight:600;
+    text-transform:uppercase;
+  }
+  .login-head h1{
+    font-family:'Oswald',sans-serif;
+    font-size:26px;
+    font-weight:600;
+    margin:6px 0 0 0;
+    letter-spacing:.01em;
+  }
+  .login-sub{
+    color:#9aa1a6;
+    font-size:13px;
+    margin-top:6px;
+  }
+  .login-body{padding:22px 28px 0 28px;}
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    color:#a7adb2;
+    margin-bottom:6px;
+    font-weight:500;
+  }
+  .field input{
+    width:100%;
+    padding:11px 12px;
+    background:var(--steel-1);
+    border:1px solid var(--steel-line);
+    border-radius:3px;
+    color:var(--off-white);
+    font-size:14px;
+    outline:none;
+  }
+  .field input:focus{border-color:var(--amber);}
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:none;
+    border-radius:3px;
+    padding:11px 18px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:filter .15s ease, transform .05s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--amber);color:#241a08;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-block{width:100%;}
+  .btn-ghost{background:transparent;color:#c7ccd0;border:1px solid var(--steel-line);}
+  .btn-ghost:hover{border-color:#7d858c;}
+  .btn-teal{background:var(--teal);color:#eef6f4;}
+  .btn-teal:hover{filter:brightness(1.12);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-sm{padding:6px 10px;font-size:12px;}
+  .login-error{
+    background:rgba(168,51,42,.15);
+    border:1px solid rgba(168,51,42,.5);
+    color:#ff9a8f;
+    font-size:12.5px;
+    padding:9px 11px;
+    border-radius:3px;
+    margin-bottom:14px;
+  }
+  .login-note{
+    font-size:11.5px;
+    color:#7d858c;
+    padding:16px 28px 0 28px;
+    line-height:1.6;
+  }
+  .login-toggle{
+    text-align:center;
+    margin-top:16px;
+    font-size:12.5px;
+    color:#9aa1a6;
+  }
+  .login-toggle a{color:var(--amber);cursor:pointer;text-decoration:underline;}
+
+  /* ---------- APP SHELL ---------- */
+  #app-screen{display:none;min-height:100vh;grid-template-columns:280px 1fr;}
+  #app-screen.active{display:grid;}
+  .sidebar{
+    background:var(--steel-2);
+    border-right:1px solid var(--steel-line);
+    padding:20px 16px 20px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--steel-line);
+  }
+  .brand-mark{
+    width:34px;height:34px;border-radius:3px;
+    background:var(--amber);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-weight:700;color:#241a08;font-size:15px;
+  }
+  .brand-text .t1{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;letter-spacing:.03em;}
+  .brand-text .t2{font-size:11px;color:#9aa1a6;}
+  .side-section-label{
+    font-size:11px;
+    letter-spacing:.12em;
+    color:var(--amber);
+    font-weight:600;
+    text-transform:uppercase;
+  }
+  .user-pill{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--steel-1);
+    border:1px solid var(--steel-line);
+    border-radius:3px;
+    padding:9px 11px;
+    font-size:12.5px;
+  }
+  .user-pill span{color:#c7ccd0;}
+  .user-pill a{color:#9aa1a6;font-size:12px;cursor:pointer;}
+  .user-pill a:hover{color:var(--amber);}
+  .readonly-banner{
+    background:rgba(226,161,58,.14);
+    border:1px solid var(--amber);
+    color:var(--amber);
+    font-size:11.5px;
+    line-height:1.6;
+    padding:9px 10px;
+    border-radius:3px;
+  }
+  .status-chip.readonly{border-color:var(--amber);color:var(--amber);}
+  .mode-badge{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--steel-line);color:#9aa1a6;}
+  .mode-badge.server{border-color:var(--teal);color:#7fd8c9;}
+  .mode-badge.local{border-color:var(--danger);color:#ff9a8f;}
+  .file-warning{background:rgba(168,51,42,.2);border:1px solid var(--danger);color:#ff9a8f;font-size:12.5px;padding:10px 12px;border-radius:3px;margin-bottom:14px;line-height:1.6;}
+  .mode-badge{
+    font-size:11px;padding:4px 10px;border-radius:20px;
+    border:1px solid var(--steel-line);color:#9aa1a6;
+  }
+  .mode-badge.server{border-color:var(--teal);color:#7fd8c9;}
+  .mode-badge.local{border-color:var(--danger);color:#ff9a8f;}
+  .file-warning{
+    background:rgba(168,51,42,.2);border:1px solid var(--danger);
+    color:#ff9a8f;font-size:12.5px;padding:10px 12px;border-radius:3px;
+    margin-bottom:14px;line-height:1.6;
+  }
+  .sign-note.readonly-note{color:var(--amber-dark);}
+  input:disabled, select:disabled, textarea:disabled,
+  input[readonly], textarea[readonly]{
+    opacity:.65;
+    cursor:not-allowed;
+  }
+  .btn:disabled, .sign-btn:disabled, .link-btn:disabled{
+    opacity:.4;
+    cursor:not-allowed;
+    pointer-events:none;
+  }
+
+  .record-search input{
+    width:100%;
+    padding:8px 10px;
+    background:var(--steel-1);
+    border:1px solid var(--steel-line);
+    border-radius:3px;
+    color:var(--off-white);
+    font-size:13px;
+    margin-bottom:10px;
+  }
+  .record-list{
+    display:flex;flex-direction:column;gap:6px;
+    overflow-y:auto;
+    max-height:calc(100vh - 420px);
+    min-height:120px;
+    padding-right:2px;
+  }
+  .record-item{
+    background:var(--steel-1);
+    border:1px solid var(--steel-line);
+    border-radius:3px;
+    padding:9px 10px;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .record-item:hover{border-color:var(--amber);}
+  .record-item.active{border-color:var(--amber);background:rgba(226,161,58,.09);}
+  .record-item .ri-main{font-size:12.5px;line-height:1.5;}
+  .record-item .ri-main b{color:var(--off-white);display:block;font-size:13px;}
+  .record-item .ri-main span{color:#8f9599;}
+  .record-item .ri-del{
+    background:none;border:none;color:#6d747a;cursor:pointer;font-size:15px;line-height:1;padding:2px;
+  }
+  .record-item .ri-del:hover{color:var(--danger);}
+  .empty-note{font-size:12px;color:#6d747a;padding:10px 2px;line-height:1.6;}
+
+  .sidebar-foot{margin-top:auto;font-size:11px;color:#6d747a;line-height:1.6;border-top:1px solid var(--steel-line);padding-top:12px;}
+
+  /* ---------- MAIN ---------- */
+  .main{padding:26px 34px 60px 34px;overflow-x:auto;}
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:flex-end;
+    background:var(--steel-2);
+    border:1px solid var(--steel-line);
+    border-radius:4px;
+    padding:18px 20px;
+    margin-bottom:22px;
+  }
+  .tb-field{display:flex;flex-direction:column;gap:5px;}
+  .tb-field label{font-size:11px;color:#9aa1a6;font-weight:500;letter-spacing:.02em;}
+  .tb-field select, .tb-field input{
+    background:var(--steel-1);
+    border:1px solid var(--steel-line);
+    border-radius:3px;
+    color:var(--off-white);
+    padding:9px 10px;
+    font-size:13.5px;
+    min-width:110px;
+  }
+  .tb-field input.wide{min-width:170px;}
+  .tb-spacer{flex:1;}
+  .status-chip{
+    font-size:11.5px;
+    padding:4px 10px;
+    border-radius:20px;
+    border:1px solid var(--steel-line);
+    color:#9aa1a6;
+  }
+  .status-chip.dirty{border-color:var(--amber);color:var(--amber);}
+  .status-chip.saved{border-color:var(--teal);color:#7fd8c9;}
+
+  /* paper ledger */
+  .ledger-wrap{
+    background:var(--paper);
+    border-radius:4px;
+    border:1px solid var(--paper-line);
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+    color:var(--ink);
+    overflow:hidden;
+  }
+  .ledger-title-bar{
+    background:var(--paper-2);
+    border-bottom:2px solid var(--ink);
+    padding:18px 22px 14px 22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .ledger-title-bar h2{
+    font-family:'Oswald',sans-serif;
+    font-size:22px;
+    margin:0;
+    letter-spacing:.02em;
+  }
+  .ledger-meta{
+    font-family:'Roboto Mono',monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .ledger-info-row{
+    display:flex;
+    border-bottom:1px solid var(--paper-line);
+    font-size:13px;
+  }
+  .info-cell{
+    padding:9px 14px;
+    border-right:1px solid var(--paper-line);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .info-cell:last-child{border-right:none;flex:1;}
+  .info-cell .lbl{font-weight:700;color:var(--ink-soft);white-space:nowrap;font-size:12px;}
+  .info-cell .val{font-weight:500;}
+
+  table.grid{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  table.grid thead th{
+    background:var(--ink);
+    color:var(--off-white);
+    font-family:'Oswald',sans-serif;
+    font-weight:500;
+    letter-spacing:.02em;
+    padding:9px 6px;
+    border-right:1px solid #3a342a;
+    font-size:12.5px;
+    position:sticky;top:0;
+  }
+  table.grid tbody td{
+    border-bottom:1px solid var(--paper-line);
+    border-right:1px solid var(--paper-line);
+    padding:0;
+  }
+  table.grid tbody tr:nth-child(even){background:rgba(0,0,0,.02);}
+  table.grid td input{
+    width:100%;
+    border:none;
+    background:transparent;
+    padding:8px 8px;
+    font-size:13px;
+    color:var(--ink);
+    outline:none;
+    font-family:'Noto Sans KR',sans-serif;
+  }
+  table.grid td input:focus{background:rgba(226,161,58,.16);}
+  table.grid td select.cell-select{
+    width:100%;
+    border:none;
+    background:transparent;
+    padding:8px 6px;
+    font-size:13px;
+    color:var(--ink);
+    outline:none;
+    font-family:'Noto Sans KR',sans-serif;
+  }
+  table.grid td select.cell-select:focus{background:rgba(226,161,58,.16);}
+  td.sign-cell{padding:4px 6px;text-align:center;}
+  .sign-btn{
+    border:1px solid var(--teal-dark);
+    background:#eef6f4;
+    color:var(--teal-dark);
+    font-size:12px;
+    font-weight:600;
+    padding:5px 10px;
+    border-radius:3px;
+    cursor:pointer;
+    font-family:'Noto Sans KR',sans-serif;
+  }
+  .sign-btn:hover{background:var(--teal);color:#fff;}
+  .sign-filled{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .sign-filled .sign-name{
+    font-family:'Oswald',sans-serif;
+    letter-spacing:.01em;
+  }
+  .sign-filled .sign-cancel{
+    border:none;background:none;color:#a68f6a;cursor:pointer;font-size:12px;padding:0 2px;
+  }
+  .sign-filled .sign-cancel:hover{color:var(--danger);}
+  .sign-note{
+    font-size:11px;
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+  table.grid td.col-date input, table.grid td.col-time input{font-family:'Roboto Mono',monospace;}
+  td.col-del{text-align:center;width:34px;}
+  td.col-del button{
+    border:none;background:none;color:#a68f6a;cursor:pointer;font-size:16px;
+  }
+  td.col-del button:hover{color:var(--danger);}
+
+  .grid-actions{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 14px;
+    background:var(--paper-2);
+    border-top:1px solid var(--paper-line);
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .grid-actions .left-actions{display:flex;gap:8px;}
+  .link-btn{
+    background:none;border:none;color:var(--teal-dark);font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:underline;
+  }
+
+  .footer-block{
+    display:grid;
+    grid-template-columns:1.4fr .8fr .8fr;
+    border-top:2px solid var(--ink);
+  }
+  .footer-cell{
+    border-right:1px solid var(--paper-line);
+    padding:10px 14px 14px 14px;
+  }
+  .footer-cell:last-child{border-right:none;}
+  .footer-label{
+    font-family:'Oswald',sans-serif;
+    font-size:12px;
+    color:var(--ink-soft);
+    letter-spacing:.05em;
+    margin-bottom:6px;
+    text-transform:uppercase;
+  }
+  .footer-cell textarea{
+    width:100%;
+    min-height:64px;
+    border:1px solid var(--paper-line);
+    background:#fffdf7;
+    border-radius:3px;
+    padding:8px;
+    font-size:13px;
+    resize:vertical;
+    font-family:'Noto Sans KR',sans-serif;
+    color:var(--ink);
+  }
+  .sign-box{
+    position:relative;
+    min-height:64px;
+    border:1px solid var(--paper-line);
+    background:#fffdf7;
+    border-radius:3px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px;
+  }
+  .sign-box input, .sign-box select.sign-select{
+    width:100%;
+    border:none;
+    background:transparent;
+    text-align:center;
+    font-family:'Oswald',sans-serif;
+    font-size:15px;
+    outline:none;
+    color:var(--ink);
+  }
+  .stamp{
+    position:absolute;
+    right:8px;
+    bottom:6px;
+    width:40px;height:40px;
+    border:2.5px solid var(--stamp);
+    border-radius:50%;
+    color:var(--stamp);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Oswald',sans-serif;
+    font-size:11px;
+    font-weight:700;
+    transform:rotate(-14deg);
+    opacity:.85;
+    letter-spacing:.02em;
+    pointer-events:none;
+  }
+
+  .bottom-bar{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:18px;
+  }
+
+  .storage-note{
+    font-size:11.5px;
+    color:#6d747a;
+    margin-top:10px;
+    line-height:1.6;
+  }
+
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--teal);
+    color:#eef6f4;
+    padding:11px 20px;
+    border-radius:4px;
+    font-size:13.5px;
+    font-weight:600;
+    box-shadow:0 10px 26px rgba(0,0,0,.35);
+    opacity:0;
+    pointer-events:none;
+    transition:all .25s ease;
+    z-index:100;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.error{background:var(--danger);}
+
+  @media (max-width:880px){
+    #app-screen.active{grid-template-columns:1fr;}
+    .sidebar{border-right:none;border-bottom:1px solid var(--steel-line);}
+    .main{padding:20px 16px 60px 16px;}
+    .footer-block{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="hazard-strip"></div>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="plate-label">현장 설비 관리</div>
+      <h1>기기가동 기록서</h1>
+      <div class="login-sub">아이디와 비밀번호로 로그인하세요</div>
+    </div>
+    <div class="login-body">
+      <div id="login-error-slot"></div>
+      <form id="login-form">
+        <div class="field">
+          <label>아이디</label>
+          <input type="text" id="login-username" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label>비밀번호</label>
+          <input type="password" id="login-password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">로그인</button>
+      </form>
+      <div class="login-toggle" id="login-toggle-slot"></div>
+    </div>
+    <div class="login-note" id="login-note-slot"></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app-screen">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">기</div>
+      <div class="brand-text">
+        <div class="t1">기기가동 기록서</div>
+        <div class="t2">현장 데이터 관리</div>
+      </div>
+    </div>
+
+    <div class="user-pill">
+      <span>👤 <b id="current-user-label"></b></span>
+      <a id="logout-btn">로그아웃</a>
+    </div>
+    <div class="readonly-banner" id="readonly-banner" style="display:none;"></div>
+
+    <div>
+      <div class="side-section-label" style="margin-bottom:8px;">저장된 기록</div>
+      <div class="record-search">
+        <input type="text" id="record-search-input" placeholder="기기명, 설치장소 검색">
+      </div>
+      <div class="record-list" id="record-list"></div>
+    </div>
+
+    <div class="sidebar-foot" id="sidebar-foot-note">
+      데이터는 이 앱을 사용하는 모든 사용자에게 공유됩니다. 같은 현장/팀에서 함께 사용하는 공용 저장소입니다.
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar">
+      <div class="tb-field">
+        <label>년도</label>
+        <select id="sel-year"></select>
+      </div>
+      <div class="tb-field">
+        <label>월</label>
+        <select id="sel-month"></select>
+      </div>
+      <div class="tb-field">
+        <label>품목명</label>
+        <select id="sel-product" class="wide"></select>
+      </div>
+      <div class="tb-field">
+        <label>기기명</label>
+        <select id="sel-device" class="wide"></select>
+      </div>
+      <div class="tb-field">
+        <label>설치장소</label>
+        <select id="sel-location" class="wide"></select>
+      </div>
+      <button class="btn btn-teal" id="load-btn">불러오기 / 새 기록</button>
+      <div class="tb-spacer"></div>
+      <span class="status-chip" id="status-chip">기록을 불러오세요</span>
+      <span class="mode-badge" id="mode-badge"></span>
+    </div>
+
+    <div class="readonly-banner" id="sheet-lock-banner" style="display:none;"></div>
+
+    <div id="ledger-area"></div>
+
+    <div class="bottom-bar" id="bottom-actions" style="display:none;">
+      <button class="btn btn-ghost" id="download-btn">📥 엑셀(.xlsx) 다운로드</button>
+      <button class="btn btn-ghost" id="gdrive-btn">☁️ 구글드라이브 저장</button>
+      <button class="btn btn-primary" id="save-btn">저장하기</button>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+let currentUser = null;
+let signupMode = false;
+let sheetIndex = [];      // shared list of saved sheet metadata
+let currentSheet = null;  // currently loaded/editing sheet object
+let currentSheetId = null;
+let isDirty = false;
+let isEditingExisting = false;   // true if this sheet already existed in storage when opened
+let rowSnapshotMap = new Map();  // rowObj -> JSON string at last load/save, to detect which specific rows changed
+
+// ---- 동시 로그인 허용 (제한 없음) ----
+let mySessionId = null;
+let isPrimarySession = false;
+let sessionHeartbeatTimer = null;
+let loginBlockedBy = null;
+const SESSION_HEARTBEAT_MS = 10000;
+const SESSION_STALE_MS = 25000;
+const GLOBAL_SESSION_KEY = 'global-session';
+
+let isReadOnly = false;
+let readOnlyRecheckTimer = null;
+
+const DAYS_MIN_ROWS = 25;
+
+/* ============================================================
+   HELPERS
+============================================================ */
+function toast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.className='toast'; }, 2400);
 }
-_PROC = {
-    "RS-201": _RS, "RS-202": _RS, "RG-203": _RS, "RS-204": _RS, "RS-205": _RS,
-    "RG-206": _RS, "RS-301": _RS, "RS-302": _RS, "RG-205": _RS,
-    "NF-101": _NF, "NF-102": _NF, "NF-103": _NF, "NF-104": _NF, "NF-105": _NF,
-    "NF-106": _NF, "NF-201": _NF, "NF-202": _NF,
-    "VD-101": _VD_VACUUM, "VD-102": _VD_VACUUM, "VD-103": _VD_VACUUM, "VD-104": _VD_VACUUM,
-    "VD-105": _VD_DRY, "VD-201": _VD_DRY, "VD-202": _VD_DRY,
+
+const DEVICE_CODES = [
+  'RS-201','RS-202','RG-203','RS-204','RS-205','RG-206','RS-301','RS-302',
+  'NF-101','NF-102','NF-103','NF-104','NF-105','NF-201','NF-202',
+  'VD-101','VD-102','VD-103','VD-104','VD-105','VD-201','VD-202',
+  'RG-205','NF-106'
+];
+const LOCATION_CODES = [
+  '합성동 1층','합성동 2층','합성동 3층',
+  '건조실1','건조실2','건조실3','건조실4','건조실5',
+  '건조실2층1','건조실2층2'
+];
+
+// 품목명 -> 해당 품목에서 사용하는 기기명 목록
+const PRODUCT_DEVICE_MAP = {
+  'O0711RE': ['RS-201','NF-102','VD-101'],
+  'G0720RE': ['RS-205','NF-105','VD-202'],
+  'O0830RE': ['RS-202','NF-103','VD-104'],
+  'O0731RE': ['RG-205','NF-101','VD-103'],
+  'LX0566RE': ['RS-301','NF-201','VD-201'],
+  'LX0556RE': ['RS-204','NF-106','VD-105'],
+  'O0330RE': ['RS-302','RG-203','NF-104','VD-102']
+};
+const PRODUCT_CODES = Object.keys(PRODUCT_DEVICE_MAP);
+
+// 기기명 -> 설치장소 자동 매핑
+const DEVICE_LOCATION_MAP = {
+  'RS-201':'합성동 2층','RS-202':'합성동 2층','RG-203':'합성동 2층','RS-204':'합성동 2층','RS-205':'합성동 2층','RG-206':'합성동 2층',
+  'RS-301':'합성동 3층','RS-302':'합성동 3층',
+  'NF-101':'합성동 1층','NF-102':'합성동 1층','NF-103':'합성동 1층','NF-104':'합성동 1층','NF-105':'합성동 1층','NF-106':'합성동 1층',
+  'NF-201':'합성동 2층','NF-202':'합성동 2층',
+  'VD-101':'건조실1','VD-102':'건조실2','VD-103':'건조실3','VD-104':'건조실4','VD-105':'건조실5',
+  'VD-201':'건조실2층1','VD-202':'건조실2층2',
+  'RG-205':'합성동 2층'
+};
+
+// RS/RG=반응기(정제), NF=여과기(여과), VD=건조기(건조) + CS
+const DEVICE_PROCESS_MAP = {
+  'RS-201':['정제','CS'],'RS-202':['정제','CS'],'RG-203':['정제','CS'],
+  'RS-204':['정제','CS'],'RS-205':['정제','CS'],'RG-206':['정제','CS'],
+  'RS-301':['정제','CS'],'RS-302':['정제','CS'],'RG-205':['정제','CS'],
+  'NF-101':['여과','CS'],'NF-102':['여과','CS'],'NF-103':['여과','CS'],
+  'NF-104':['여과','CS'],'NF-105':['여과','CS'],'NF-106':['여과','CS'],
+  'NF-201':['여과','CS'],'NF-202':['여과','CS'],
+  'VD-101':['건조','CS'],'VD-102':['건조','CS'],'VD-103':['건조','CS'],
+  'VD-104':['건조','CS'],'VD-105':['건조','CS'],
+  'VD-201':['건조','CS'],'VD-202':['건조','CS']
+};
+
+function processesForDevice(device){
+  if(DEVICE_PROCESS_MAP[device]) return DEVICE_PROCESS_MAP[device];
+  if(/^RS-|^RG-/.test(device||'')) return ['정제','CS'];
+  if(/^NF-/.test(device||'')) return ['여과','CS'];
+  if(/^VD-/.test(device||'')) return ['건조','CS'];
+  return [];
 }
-def _dev(name, mfg_prefix):
-    return {
-        "location": _LOC[name],
-        "mfg_prefix": mfg_prefix,
-        "processes": dict(_PROC[name]),
+
+const WORKER_CODES = ['ajtwh7481','psw','khd4323','leel119'];
+const MANAGER_CODES = ['khd4323','leel119'];
+const APPROVER_CODES = ['ccs'];
+
+// 아이디 -> 표시 이름
+const USER_NAMES = {
+  'leel119':'김봉수',
+  'ccs':'최창식',
+  'khd4323':'김희두',
+  'psw':'박상욱',
+  'ajtwh7481':'조권희'
+};
+function displayName(code){
+  return USER_NAMES[code] || code || '';
+}
+
+function blankRow(){
+  return { date:'', time:'', mfgNo:'', process:'', worker:'', checker:'', note:'' };
+}
+
+function sanitize(str){
+  return String(str||'').trim().replace(/\s+/g,'_').replace(/[^\w가-힣_-]/g,'');
+}
+
+function makeSheetId(year, month, device, location){
+  return `${year}-${String(month).padStart(2,'0')}__${sanitize(device)}__${sanitize(location)}`;
+}
+
+function setDirty(v){
+  isDirty = v;
+  const chip = document.getElementById('status-chip');
+  if(!currentSheet) return;
+  if(v){ chip.textContent = '저장되지 않은 변경사항 있음'; chip.className='status-chip dirty'; }
+  else { chip.textContent = '저장됨'; chip.className='status-chip saved'; }
+}
+
+/* ============================================================
+   STORAGE LAYER
+   - Inside Claude.ai artifact preview: uses window.storage (shared
+     across everyone who opens this artifact there).
+   - As a standalone downloaded .html file (double-clicked / hosted
+     on a server): window.storage does not exist, so this falls
+     back to the browser's localStorage. In that mode, data is only
+     stored on that one computer/browser, not shared across devices.
+============================================================ */
+const LS_PREFIX = 'eqlog__';
+let storageModeNotified = false;
+let useServerApi = false;
+let serverShareUrls = [];
+
+function hasArtifactStorage(){
+  return typeof window.storage !== 'undefined'
+      && window.storage
+      && typeof window.storage.get === 'function';
+}
+
+function storageModeLabel(){
+  if(useServerApi) return 'server';
+  if(hasArtifactStorage()) return 'artifact';
+  return 'local';
+}
+
+async function initStorageBackend(){
+  if(location.protocol === 'file:'){
+    useServerApi = false;
+    serverShareUrls = [];
+    return;
+  }
+  try{
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(()=>ctrl.abort(), 3000) : null;
+    const r = await fetch('/api/health', ctrl ? { signal: ctrl.signal } : {});
+    if(timer) clearTimeout(timer);
+    useServerApi = r.ok;
+    if(r.ok){
+      const info = await r.json();
+      serverShareUrls = info.shareUrls || [];
     }
-# 품목명(웹앱 PRODUCT_DEVICE_MAP) -> 기기
-PRODUCTS = {
-    # 기존 K940 호환 (O0830RE 와 동일)
-    "K940": {
-        "RS-202": {
-            "location": "합성동 2층",
-            "mfg_prefix": "O0830RE",
-            "processes": {"1": "원료투입/승온/환류/냉각", "2": "세척CS"},
-        },
-        "NF-103": {
-            "location": "합성동 1층",
-            "mfg_prefix": "O0830RE",
-            "processes": {"1": "여과/세척", "2": "세척CS"},
-        },
-        "VD-104": {
-            "location": "건조실 4",
-            "mfg_prefix": "O0830RE",
-            "processes": {"1": "진공건조", "2": "세척CS"},
-        },
-        "RS-202": _dev("RS-202", "O0830RE"),
-        "NF-103": _dev("NF-103", "O0830RE"),
-        "VD-104": _dev("VD-104", "O0830RE"),
-    },
-    "O0711RE": {
-        "RS-201": _dev("RS-201", "O0711RE"),
-        "NF-102": _dev("NF-102", "O0711RE"),
-        "VD-101": _dev("VD-101", "O0711RE"),
-    },
-    "G0720RE": {
-        "RS-205": _dev("RS-205", "G0720RE"),
-        "NF-105": _dev("NF-105", "G0720RE"),
-        "VD-202": _dev("VD-202", "G0720RE"),
-    },
-    "O0830RE": {
-        "RS-202": _dev("RS-202", "O0830RE"),
-        "NF-103": _dev("NF-103", "O0830RE"),
-        "VD-104": _dev("VD-104", "O0830RE"),
-    },
-    "O0731RE": {
-        "RG-205": _dev("RG-205", "O0731RE"),
-        "NF-101": _dev("NF-101", "O0731RE"),
-        "VD-103": _dev("VD-103", "O0731RE"),
-    },
-    "LX0566RE": {
-        "RS-301": _dev("RS-301", "LX0566RE"),
-        "NF-201": _dev("NF-201", "LX0566RE"),
-        "VD-201": _dev("VD-201", "LX0566RE"),
-    },
-    "LX0556RE": {
-        "RS-204": _dev("RS-204", "LX0556RE"),
-        "NF-106": _dev("NF-106", "LX0556RE"),
-        "VD-105": _dev("VD-105", "LX0556RE"),
-    },
-    "O0330RE": {
-        "RS-302": _dev("RS-302", "O0330RE"),
-        "RG-203": _dev("RG-203", "O0330RE"),
-        "NF-104": _dev("NF-104", "O0330RE"),
-        "VD-102": _dev("VD-102", "O0330RE"),
-    },
+  }catch(e){
+    useServerApi = false;
+    serverShareUrls = [];
+  }
 }
-DEFAULT_PRODUCT = "K940"
 
-[1 line collapsed]
+async function apiJson(path, opts={}){
+  const r = await fetch(path, {
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    ...opts,
+  });
+  if(!r.ok) throw new Error('API ' + r.status);
+  return r.json();
+}
 
+function notifyStorageMode(){
+  if(storageModeNotified) return;
+  storageModeNotified = true;
+  const mode = storageModeLabel();
+  if(mode === 'local'){
+    console.info('[기기가동 기록서] 독립 실행: 이 PC 브라우저에만 저장됩니다. 회사 공유는 시작.bat 서버로 접속하세요.');
+  } else if(mode === 'server'){
+    console.info('[기기가동 기록서] 회사 공유망 서버 연결됨.');
+  }
+}
+
+function updateModeBadge(){
+  const badge = document.getElementById('mode-badge');
+  if(!badge) return;
+  const mode = storageModeLabel();
+  if(mode === 'server'){
+    badge.textContent = '공유 서버 연결됨';
+    badge.className = 'mode-badge server';
+  } else if(mode === 'local'){
+    badge.textContent = '단독 실행 (공유 안 됨)';
+    badge.className = 'mode-badge local';
+  } else {
+    badge.textContent = '공유 저장소';
+    badge.className = 'mode-badge';
+  }
+}
+
+async function stGet(key, shared){
+  notifyStorageMode();
+  if(useServerApi){
+    try{
+      const data = await apiJson('/api/kv/' + encodeURIComponent(key));
+      if(data.value === null || data.value === undefined) return null;
+      return { key, value: data.value, shared: !!shared };
+    }catch(e){ return null; }
+  }
+  if(hasArtifactStorage()){
+    try{ return await window.storage.get(key, shared); }
+    catch(e){ return null; }
+  }
+  try{
+    const raw = localStorage.getItem(LS_PREFIX+key);
+    return raw===null ? null : {key, value:raw, shared:!!shared};
+  }catch(e){ return null; }
+}
+async function stSet(key, value, shared){
+  notifyStorageMode();
+  if(useServerApi){
+    try{
+      await apiJson('/api/kv/' + encodeURIComponent(key), {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      });
+      return { key, value, shared: !!shared };
+    }catch(e){ return null; }
+  }
+  if(hasArtifactStorage()){
+    try{ return await window.storage.set(key, value, shared); }
+    catch(e){ return null; }
+  }
+  try{
+    localStorage.setItem(LS_PREFIX+key, value);
+    return {key, value, shared:!!shared};
+  }catch(e){ return null; }
+}
+async function stDelete(key, shared){
+  notifyStorageMode();
+  if(useServerApi){
+    try{
+      await apiJson('/api/kv/' + encodeURIComponent(key), { method: 'DELETE' });
+      return { key, deleted: true, shared: !!shared };
+    }catch(e){ return null; }
+  }
+  if(hasArtifactStorage()){
+    try{ return await window.storage.delete(key, shared); }
+    catch(e){ return null; }
+  }
+  try{
+    localStorage.removeItem(LS_PREFIX+key);
+    return {key, deleted:true, shared:!!shared};
+  }catch(e){ return null; }
+}
+
+async function loadUsers(){
+  const r = await stGet('users', true);
+  try{ return r ? JSON.parse(r.value) : []; }catch(e){ return []; }
+}
+async function saveUsers(list){
+  await stSet('users', JSON.stringify(list), true);
+}
+
+async function loadSheetIndex(){
+  const r = await stGet('sheet-index', true);
+  try{ sheetIndex = r ? JSON.parse(r.value) : []; }catch(e){ sheetIndex = []; }
+}
+async function saveSheetIndex(){
+  await stSet('sheet-index', JSON.stringify(sheetIndex), true);
+}
+
+async function loadSheetById(id){
+  const r = await stGet('sheet:'+id, true);
+  try{ return r ? JSON.parse(r.value) : null; }catch(e){ return null; }
+}
+async function saveSheetById(id, data){
+  await stSet('sheet:'+id, JSON.stringify(data), true);
+}
+async function deleteSheetById(id){
+  await stDelete('sheet:'+id, true);
+}
+
+/* ============================================================
+   SESSION (동시 로그인 허용 — 차단/보기전용 없음)
+============================================================ */
+function makeSessionId(){
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** @returns {{ok:boolean}} */
+async function establishSession(){
+  mySessionId = makeSessionId();
+  loginBlockedBy = null;
+  isPrimarySession = true;
+  isReadOnly = false;
+  return { ok: true };
+}
+
+function startSessionHeartbeat(){ /* no-op */ }
+function stopSessionHeartbeat(){
+  if(sessionHeartbeatTimer){ clearInterval(sessionHeartbeatTimer); sessionHeartbeatTimer = null; }
+}
+
+async function releaseSession(){
+  stopSessionHeartbeat();
+  isPrimarySession = false;
+  mySessionId = null;
+}
+
+function stopReadOnlyRecheck(){
+  if(readOnlyRecheckTimer){ clearInterval(readOnlyRecheckTimer); readOnlyRecheckTimer = null; }
+}
+
+function updateReadOnlyUI(){
+  const banner = document.getElementById('readonly-banner');
+  if(banner) banner.style.display = 'none';
+  const sheetBanner = document.getElementById('sheet-lock-banner');
+  if(sheetBanner) sheetBanner.style.display = 'none';
+  const saveBtn = document.getElementById('save-btn');
+  if(saveBtn) saveBtn.disabled = false;
+}
+
+function isEditBlocked(){
+  return false;
+}
+
+function updateSheetLockUI(){ /* no-op */ }
+async function releaseSheetLock(){ /* no-op */ }
+async function acquireSheetLock(id){ /* no-op */ }
+
+/* ============================================================
+   LOGIN
+============================================================ */
+function renderLoginExtras(){
+  const noteSlot = document.getElementById('login-note-slot');
+  const toggleSlot = document.getElementById('login-toggle-slot');
+  const fileWarn = location.protocol === 'file:'
+    ? '<div class="file-warning">⚠️ <b>지금은 HTML 파일을 직접 열었습니다.</b> 데이터가 이 PC에만 저장되어 <b>회사 동료와 공유되지 않습니다.</b><br>공유 사용: <b>기기가동_기록서_웹앱_server</b> 폴더의 <b>시작.bat</b> 실행 후 <b>http://서버IP:5080</b> 으로 접속하세요.</div>'
+    : '';
+  const shareNote = (storageModeLabel() === 'server' && serverShareUrls.length)
+    ? `<br><br>📡 <b>동료 PC 접속 주소:</b><br>${serverShareUrls.map(u=>`<code style="color:#7fd8c9">${escapeHtml(u)}</code>`).join('<br>')}`
+    : '';
+  const modeNote = storageModeLabel() === 'server'
+    ? '✅ 회사 공유망 서버 연결됨. <b>여러 명이 동시에 로그인</b>할 수 있습니다.' + shareNote
+    : hasArtifactStorage()
+    ? '이 화면은 Claude 아티팩트 안에서 실행 중입니다. 데이터는 이 아티팩트를 여는 모든 사용자에게 공유됩니다.'
+    : '이 화면은 독립 실행형입니다. 데이터는 <b>이 브라우저에만</b> 저장됩니다. 회사 공유는 <b>시작.bat</b> 서버로 접속하세요.';
+
+  if(signupMode){
+    document.querySelector('#login-form button[type="submit"]').textContent = '계정 만들고 로그인';
+    noteSlot.innerHTML = fileWarn + '최초 관리자 계정을 생성합니다. 비밀번호는 별도의 암호화 없이 저장되니, 외부에 공개되지 않는 용도로만 사용하세요.<br><br>' + modeNote;
+    toggleSlot.innerHTML = '이미 계정이 있나요? <a id="to-login">로그인으로 돌아가기</a>';
+  } else {
+    document.querySelector('#login-form button[type="submit"]').textContent = '로그인';
+    noteSlot.innerHTML = fileWarn + '이 앱의 로그인은 현장 공용 데이터 보호를 위한 간단한 접근 제한입니다. 민감한 개인정보 보호용으로는 사용하지 마세요.<br><br>' + modeNote;
+    toggleSlot.innerHTML = '계정을 추가하시겠어요? <a id="to-signup">새 계정 만들기</a>';
+  }
+  const toLogin = document.getElementById('to-login');
+  const toSignup = document.getElementById('to-signup');
+  if(toLogin) toLogin.onclick = ()=>{ signupMode=false; renderLoginExtras(); };
+  if(toSignup) toSignup.onclick = ()=>{ signupMode=true; renderLoginExtras(); };
+}
+
+function showLoginError(msg){
+  document.getElementById('login-error-slot').innerHTML = msg ? `<div class="login-error">${msg}</div>` : '';
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  showLoginError('');
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if(!username || !password){ showLoginError('아이디와 비밀번호를 입력하세요.'); return; }
+
+  const submitBtn = document.querySelector('#login-form button[type="submit"]');
+  const restoreLabel = submitBtn.textContent;
+  function setLoggingIn(on){
+    submitBtn.disabled = on;
+    submitBtn.textContent = on ? '로그인 확인 중…' : restoreLabel;
+  }
+
+  const users = await loadUsers();
+
+  if(signupMode){
+    if(users.some(u=>u.username===username)){
+      showLoginError('이미 존재하는 아이디입니다.');
+      return;
+    }
+    users.push({ username, password });
+    await saveUsers(users);
+    currentUser = username;
+    setLoggingIn(true);
+    await establishSession();
+    setLoggingIn(false);
+    enterApp();
+    return;
+  }
+
+  if(users.length===0){
+    showLoginError('등록된 계정이 없습니다. 먼저 관리자 계정을 생성하세요.');
+    signupMode = true;
+    renderLoginExtras();
+    return;
+  }
+  const found = users.find(u=>u.username===username && u.password===password);
+  if(!found){
+    showLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+    return;
+  }
+  currentUser = username;
+  setLoggingIn(true);
+  await establishSession();
+  setLoggingIn(false);
+  enterApp();
+});
+
+const DEFAULT_ADMIN = { username: 'ajtwh7481', password: '1026' };
+
+async function initLoginScreen(){
+  let users = await loadUsers();
+  if(users.length===0){
+    users = [DEFAULT_ADMIN];
+    await saveUsers(users);
+  }
+  signupMode = false;
+  renderLoginExtras();
+}
+
+document.getElementById('logout-btn').addEventListener('click', async ()=>{
+  if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 로그아웃하시겠습니까?')) return;
+  stopReadOnlyRecheck();
+  await releaseSession();
+  await releaseSheetLock();
+  currentUser = null;
+  currentSheet = null;
+  currentSheetId = null;
+  isReadOnly = false;
+  document.getElementById('readonly-banner').style.display = 'none';
+  document.getElementById('sheet-lock-banner').style.display = 'none';
+  document.getElementById('app-screen').classList.remove('active');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-username').value='';
+  document.getElementById('login-password').value='';
+  initLoginScreen();
+});
+
+/* ============================================================
+   ENTER APP
+============================================================ */
+async function enterApp(){
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').classList.add('active');
+  document.getElementById('current-user-label').textContent = displayName(currentUser);
+  document.getElementById('sidebar-foot-note').textContent = storageModeLabel() === 'server'
+    ? (serverShareUrls.length
+      ? `여러 명 동시 로그인 가능. 접속: ${serverShareUrls[0]}`
+      : '여러 명이 동시에 로그인·수정할 수 있습니다.')
+    : hasArtifactStorage()
+    ? '데이터는 이 아티팩트를 여는 모든 사용자에게 공유됩니다.'
+    : '⚠️ 단독 실행: 이 PC에만 저장됩니다. 회사 공유는 시작.bat 서버로 접속하세요.';
+
+  updateReadOnlyUI();
+  updateModeBadge();
+  if(storageModeLabel() === 'server'){
+    toast('서버 연결됨. 여러 명이 동시에 사용할 수 있습니다.');
+  } else if(location.protocol === 'file:'){
+    toast('⚠️ HTML 직접 실행 중 — 데이터 공유 안 됨. 시작.bat 서버로 접속하세요.', true);
+  }
+
+  populateYearMonth();
+  populateDeviceLocation();
+  await loadSheetIndex();
+  renderRecordList();
+}
+
+function populateDeviceLocation(){
+  const pSel = document.getElementById('sel-product');
+  const dSel = document.getElementById('sel-device');
+  const lSel = document.getElementById('sel-location');
+
+  pSel.innerHTML = '<option value="">품목명 선택 (전체)</option>' +
+    PRODUCT_CODES.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  fillDeviceOptions(''); // 초기에는 전체 기기명 표시
+
+  lSel.innerHTML = '<option value="">설치장소 선택</option>' +
+    LOCATION_CODES.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  pSel.onchange = ()=>{
+    fillDeviceOptions(pSel.value);
+    applyDeviceLocation();
+  };
+
+  dSel.onchange = ()=>{
+    applyDeviceLocation();
+  };
+}
+
+// 선택된 기기명에 매핑된 설치장소를 자동으로 선택
+function applyDeviceLocation(){
+  const dSel = document.getElementById('sel-device');
+  const lSel = document.getElementById('sel-location');
+  const loc = DEVICE_LOCATION_MAP[dSel.value];
+  if(loc){
+    lSel.value = loc;
+  }
+}
+
+function fillDeviceOptions(productCode){
+  const dSel = document.getElementById('sel-device');
+  const list = productCode && PRODUCT_DEVICE_MAP[productCode]
+    ? PRODUCT_DEVICE_MAP[productCode]
+    : DEVICE_CODES;
+  const prevValue = dSel.value;
+  dSel.innerHTML = '<option value="">기기명 선택</option>' +
+    list.map(c=>`<option value="${c}">${c}</option>`).join('');
+  // 이전에 선택돼 있던 값이 새 목록에도 있으면 유지
+  if(list.includes(prevValue)) dSel.value = prevValue;
+}
+
+function populateYearMonth(){
+  const ySel = document.getElementById('sel-year');
+  const mSel = document.getElementById('sel-month');
+  const now = new Date();
+  const thisYear = now.getFullYear();
+  ySel.innerHTML='';
+  for(let y=thisYear-2; y<=thisYear+1; y++){
+    const opt = document.createElement('option');
+    opt.value=y; opt.textContent=y+'년';
+    if(y===thisYear) opt.selected=true;
+    ySel.appendChild(opt);
+  }
+  mSel.innerHTML='';
+  for(let m=1;m<=12;m++){
+    const opt = document.createElement('option');
+    opt.value=m; opt.textContent=m+'월';
+    if(m===now.getMonth()+1) opt.selected=true;
+    mSel.appendChild(opt);
+  }
+}
+
+/* ============================================================
+   RECORD LIST (sidebar)
+============================================================ */
+function renderRecordList(filter){
+  const list = document.getElementById('record-list');
+  filter = (filter||'').toLowerCase();
+  const items = sheetIndex
+    .filter(s => !filter || (s.device||'').toLowerCase().includes(filter) || (s.location||'').toLowerCase().includes(filter))
+    .sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+
+  if(items.length===0){
+    list.innerHTML = `<div class="empty-note">저장된 기록이 없습니다. 상단에서 년/월과 기기 정보를 입력하고 "불러오기 / 새 기록"을 눌러 시작하세요.</div>`;
+    return;
+  }
+  list.innerHTML = items.map(s=>`
+    <div class="record-item ${s.id===currentSheetId?'active':''}" data-id="${s.id}">
+      <div class="ri-main">
+        <b>${escapeHtml(s.device)||'(기기명 미입력)'}</b>
+        <span>${s.year}년 ${s.month}월 · ${escapeHtml(s.product)? escapeHtml(s.product)+' · ':''}${escapeHtml(s.location)||'-'}</span>
+      </div>
+      <button class="ri-del" data-del="${s.id}" title="삭제">✕</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.record-item').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      if(e.target.dataset.del) return;
+      openSheet(el.dataset.id);
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
+      const id = btn.dataset.del;
+      if(id===currentSheetId && isSheetReadOnly){ toast(`${displayName(sheetLockedByUser)}님이 편집 중인 기록은 삭제할 수 없습니다.`, true); return; }
+      const meta = sheetIndex.find(s=>s.id===id);
+      if(!confirm(`"${meta.device} / ${meta.year}년 ${meta.month}월" 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return;
+      await deleteSheetById(id);
+      await deleteSheetLock(id);
+      sheetIndex = sheetIndex.filter(s=>s.id!==id);
+      await saveSheetIndex();
+      if(currentSheetId===id){
+        await releaseSheetLock();
+        currentSheet = null;
+        currentSheetId = null;
+        document.getElementById('ledger-area').innerHTML='';
+        document.getElementById('bottom-actions').style.display='none';
+        document.getElementById('sheet-lock-banner').style.display='none';
+        document.getElementById('status-chip').textContent='기록을 불러오세요';
+        document.getElementById('status-chip').className='status-chip';
+      }
+      renderRecordList(document.getElementById('record-search-input').value);
+      toast('삭제되었습니다.');
+    });
+  });
+}
+
+document.getElementById('record-search-input').addEventListener('input', (e)=>{
+  renderRecordList(e.target.value);
+});
+
+function escapeHtml(str){
+  return String(str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   LOAD / CREATE SHEET
+============================================================ */
+document.getElementById('load-btn').addEventListener('click', async ()=>{
+  const year = parseInt(document.getElementById('sel-year').value,10);
+  const month = parseInt(document.getElementById('sel-month').value,10);
+  const product = document.getElementById('sel-product').value.trim();
+  const device = document.getElementById('sel-device').value.trim();
+  const location = document.getElementById('sel-location').value.trim();
+
+  if(!device){ toast('기기명을 입력하세요.', true); return; }
+
+  if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
+
+  const id = makeSheetId(year, month, device, location);
+  await openSheet(id, {year, month, product, device, location});
+});
+
+async function openSheet(id, metaIfNew){
+  // 이전에 열려있던 다른 기록의 편집 잠금은 여기서 반납
+  if(currentSheetId && currentSheetId !== id){
+    await releaseSheetLock();
+  }
+
+  let data = await loadSheetById(id);
+  isEditingExisting = !!data;
+  if(!data){
+    if(!metaIfNew){
+      const meta = sheetIndex.find(s=>s.id===id);
+      metaIfNew = meta || {year:'', month:'', product:'', device:'', location:''};
+    }
+    data = {
+      year: metaIfNew.year, month: metaIfNew.month,
+      product: metaIfNew.product || '', device: metaIfNew.device, location: metaIfNew.location,
+      rows: Array.from({length: DAYS_MIN_ROWS}, blankRow),
+      footerNote:'', manager:'', approver:'',
+      updatedAt: new Date().toISOString()
+    };
+  }
+  currentSheet = data;
+  currentSheetId = id;
+  rowSnapshotMap = new Map();
+  if(isEditingExisting){
+    currentSheet.rows.forEach(r => rowSnapshotMap.set(r, JSON.stringify(r)));
+  }
+
+  document.getElementById('sel-year').value = data.year;
+  document.getElementById('sel-month').value = data.month;
+  document.getElementById('sel-product').value = data.product || '';
+  fillDeviceOptions(data.product || '');
+  document.getElementById('sel-device').value = data.device;
+  document.getElementById('sel-location').value = data.location;
+
+  renderLedger();
+  document.getElementById('bottom-actions').style.display='flex';
+  setDirty(false);
+  renderRecordList(document.getElementById('record-search-input').value);
+}
+
+/* ============================================================
+   LEDGER RENDER (the "paper" grid)
+============================================================ */
+function renderLedger(){
+  const area = document.getElementById('ledger-area');
+  const s = currentSheet;
+
+  area.innerHTML = `
+    <div class="ledger-wrap">
+      <div class="ledger-title-bar">
+        <h2>기기가동 기록서</h2>
+        <div class="ledger-meta">${s.year || '20__'}년 ${s.month || '__'}월</div>
+      </div>
+      <div class="ledger-info-row">
+        <div class="info-cell" style="flex:1"><span class="lbl">품 목 명</span><span class="val">${escapeHtml(s.product)||'-'}</span></div>
+        <div class="info-cell" style="flex:1"><span class="lbl">기 기 명</span><span class="val">${escapeHtml(s.device)||'-'}</span></div>
+        <div class="info-cell" style="flex:1"><span class="lbl">설치장소</span><span class="val">${escapeHtml(s.location)||'-'}</span></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="grid" id="grid-table">
+          <thead>
+            <tr>
+              <th style="width:9%">날짜</th>
+              <th style="width:13%">사용시간</th>
+              <th style="width:12%">제조번호</th>
+              <th style="width:13%">작업공정</th>
+              <th style="width:11%">작업자</th>
+              <th style="width:11%">확인자</th>
+              <th style="width:26%">비고</th>
+              <th style="width:4%"></th>
+            </tr>
+          </thead>
+          <tbody id="grid-tbody"></tbody>
+        </table>
+      </div>
+      <div class="grid-actions">
+        <div class="left-actions">
+          <button class="link-btn" id="add-row-btn">+ 행 추가</button>
+          <button class="link-btn" id="add-today-btn">+ 오늘 날짜로 행 추가</button>
+        </div>
+        <div style="font-size:12px;color:var(--ink-soft);">총 ${s.rows.length}행</div>
+      </div>
+      <div class="footer-block">
+        <div class="footer-cell">
+          <div class="footer-label">비고</div>
+          <textarea id="footer-note" placeholder="특이사항을 입력하세요">${escapeHtml(s.footerNote)}</textarea>
+        </div>
+        <div class="footer-cell">
+          <div class="footer-label">담당자</div>
+          <div class="sign-box">
+            <select id="footer-manager" class="sign-select">
+              <option value="">선택</option>
+              ${MANAGER_CODES.map(c=>`<option value="${c}" ${s.manager===c?'selected':''}>${displayName(c)}</option>`).join('')}
+            </select>
+            ${s.manager ? '<div class="stamp">확인</div>' : ''}
+          </div>
+        </div>
+        <div class="footer-cell">
+          <div class="footer-label">승인자</div>
+          <div class="sign-box">
+            <select id="footer-approver" class="sign-select">
+              <option value="">선택</option>
+              ${APPROVER_CODES.map(c=>`<option value="${c}" ${s.approver===c?'selected':''}>${displayName(c)}</option>`).join('')}
+            </select>
+            ${s.approver ? '<div class="stamp">승인</div>' : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="storage-note">${ hasArtifactStorage()
+        ? '※ 이 기록은 팀 공용 저장소에 저장됩니다. 같은 앱을 사용하는 모든 로그인 사용자가 조회·수정할 수 있습니다.'
+        : '※ 독립 실행 모드입니다. 이 기록은 현재 브라우저에만 저장되며 다른 컴퓨터와 공유되지 않습니다.' }</div>
+  `;
+
+  const tbody = document.getElementById('grid-tbody');
+  s.rows.forEach(row => tbody.appendChild(createRowEl(row)));
+
+  document.getElementById('add-row-btn').addEventListener('click', ()=>{
+    if(isEditBlocked()){ toast('보기 전용 모드에서는 행을 추가할 수 없습니다.', true); return; }
+    const row = blankRow();
+    s.rows.push(row);
+    tbody.appendChild(createRowEl(row));
+    setDirty(true);
+    document.querySelector('.grid-actions div[style]').textContent = `총 ${s.rows.length}행`;
+  });
+  document.getElementById('add-today-btn').addEventListener('click', ()=>{
+    if(isEditBlocked()){ toast('보기 전용 모드에서는 행을 추가할 수 없습니다.', true); return; }
+    const row = blankRow();
+    const d = new Date();
+    row.date = `${d.getMonth()+1}/${d.getDate()}`;
+    s.rows.push(row);
+    tbody.appendChild(createRowEl(row));
+    setDirty(true);
+    document.querySelector('.grid-actions div[style]').textContent = `총 ${s.rows.length}행`;
+  });
+
+  const footerNoteEl = document.getElementById('footer-note');
+  const footerManagerEl = document.getElementById('footer-manager');
+  const footerApproverEl = document.getElementById('footer-approver');
+  footerNoteEl.addEventListener('input', (e)=>{ s.footerNote = e.target.value; setDirty(true); });
+  footerManagerEl.addEventListener('change', (e)=>{ s.manager = e.target.value; setDirty(true); refreshStamp('footer-manager', s.manager); });
+  footerApproverEl.addEventListener('change', (e)=>{ s.approver = e.target.value; setDirty(true); refreshStamp('footer-approver', s.approver); });
+
+  if(isEditBlocked()){
+    document.getElementById('add-row-btn').disabled = true;
+    document.getElementById('add-today-btn').disabled = true;
+    footerNoteEl.disabled = true;
+    footerManagerEl.disabled = true;
+    footerApproverEl.disabled = true;
+    document.getElementById('save-btn').disabled = true;
+  }
+}
+
+function refreshStamp(inputId, value){
+  const box = document.getElementById(inputId).parentElement;
+  let stamp = box.querySelector('.stamp');
+  if(value && !stamp){
+    stamp = document.createElement('div');
+    stamp.className='stamp';
+    stamp.textContent = inputId.includes('approver') ? '승인' : '확인';
+    box.appendChild(stamp);
+  } else if(!value && stamp){
+    stamp.remove();
+  }
+}
+
+/* ============================================================
+   WORKER / CHECKER SIGN CELLS
+   - 작업자는 로그인한 본인 계정으로만 서명 가능 (아이디 저장, 화면엔 이름 표시)
+   - 확인자는 작업자 서명이 먼저 있어야 하고, 작업자와 다른 계정으로
+     로그인해야만 서명 버튼이 활성화됨
+============================================================ */
+function renderWorkerCell(td, rowObj, checkerTd){
+  td.innerHTML = '';
+  td.className = 'sign-cell';
+
+  if(rowObj.worker){
+    const wrap = document.createElement('div');
+    wrap.className = 'sign-filled';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'sign-name';
+    nameSpan.textContent = displayName(rowObj.worker);
+    wrap.appendChild(nameSpan);
+
+    if(!isEditBlocked() && currentUser === rowObj.worker){
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'sign-cancel';
+      cancelBtn.textContent = '✕';
+      cancelBtn.title = '서명 취소';
+      cancelBtn.addEventListener('click', ()=>{
+        if(rowObj.checker){
+          toast('확인자 서명이 이미 있어 작업자 서명을 취소할 수 없습니다. 확인자 서명을 먼저 취소하세요.', true);
+          return;
+        }
+        rowObj.worker = '';
+        setDirty(true);
+        renderWorkerCell(td, rowObj, checkerTd);
+        renderCheckerCell(checkerTd, rowObj, td);
+      });
+      wrap.appendChild(cancelBtn);
+    }
+    td.appendChild(wrap);
+  } else if(isEditBlocked()){
+    const note = document.createElement('span');
+    note.className = 'sign-note readonly-note';
+    note.textContent = '미서명';
+    td.appendChild(note);
+  } else {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sign-btn';
+    btn.textContent = '서명';
+    btn.addEventListener('click', ()=>{
+      if(!currentUser) return;
+      rowObj.worker = currentUser;
+      setDirty(true);
+      renderWorkerCell(td, rowObj, checkerTd);
+      renderCheckerCell(checkerTd, rowObj, td);
+    });
+    td.appendChild(btn);
+  }
+}
+
+function renderCheckerCell(td, rowObj, workerTd){
+  td.innerHTML = '';
+  td.className = 'sign-cell';
+
+  if(!rowObj.worker){
+    const note = document.createElement('span');
+    note.className = 'sign-note';
+    note.textContent = '작업자 서명 필요';
+    td.appendChild(note);
+    return;
+  }
+
+  if(rowObj.checker){
+    const wrap = document.createElement('div');
+    wrap.className = 'sign-filled';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'sign-name';
+    nameSpan.textContent = displayName(rowObj.checker);
+    wrap.appendChild(nameSpan);
+
+    if(!isEditBlocked() && currentUser === rowObj.checker){
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'sign-cancel';
+      cancelBtn.textContent = '✕';
+      cancelBtn.title = '서명 취소';
+      cancelBtn.addEventListener('click', ()=>{
+        rowObj.checker = '';
+        setDirty(true);
+        renderCheckerCell(td, rowObj, workerTd);
+      });
+      wrap.appendChild(cancelBtn);
+    }
+    td.appendChild(wrap);
+    return;
+  }
+
+  if(isEditBlocked()){
+    const note = document.createElement('span');
+    note.className = 'sign-note readonly-note';
+    note.textContent = '미서명';
+    td.appendChild(note);
+    return;
+  }
+
+  if(currentUser === rowObj.worker){
+    const note = document.createElement('span');
+    note.className = 'sign-note';
+    note.textContent = '다른 계정으로 로그인 후 서명 가능';
+    td.appendChild(note);
+    return;
+  }
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'sign-btn';
+  btn.textContent = '서명';
+  btn.addEventListener('click', ()=>{
+    if(!currentUser) return;
+    rowObj.checker = currentUser;
+    setDirty(true);
+    renderCheckerCell(td, rowObj, workerTd);
+  });
+  td.appendChild(btn);
+}
+
+function createRowEl(rowObj){
+  const tr = document.createElement('tr');
+  const textFields = [
+    ['date','col-date','날짜'],
+    ['time','col-time','예: 09:00~18:00'],
+    ['mfgNo','','제조번호']
+  ];
+  textFields.forEach(([key, cls, placeholder])=>{
+    const td = document.createElement('td');
+    if(cls) td.className = cls;
+    const input = document.createElement('input');
+    input.type='text';
+    input.value = rowObj[key] || '';
+    input.placeholder = placeholder;
+    input.readOnly = isEditBlocked();
+    input.addEventListener('input', ()=>{ rowObj[key] = input.value; setDirty(true); });
+    td.appendChild(input);
+    tr.appendChild(td);
+  });
+
+  // 작업공정: 기기별 선택 (RS/RG=정제, NF=여과, VD=건조 + CS)
+  {
+    const td = document.createElement('td');
+    const procs = processesForDevice(currentSheet && currentSheet.device);
+    const sel = document.createElement('select');
+    sel.className = 'cell-select';
+    sel.disabled = isEditBlocked();
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = procs.length ? '공정 선택' : '작업공정';
+    sel.appendChild(empty);
+    procs.forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    });
+    if(rowObj.process && !procs.includes(rowObj.process)){
+      const opt = document.createElement('option');
+      opt.value = rowObj.process;
+      opt.textContent = rowObj.process;
+      sel.appendChild(opt);
+    }
+    sel.value = rowObj.process || '';
+    sel.addEventListener('change', ()=>{
+      rowObj.process = sel.value;
+      setDirty(true);
+    });
+    td.appendChild(sel);
+    tr.appendChild(td);
+  }
+
+  // 작업자 / 확인자: 직접 서명(로그인 계정) 방식
+  // - 작업자가 먼저 서명해야 확인자 서명이 가능
+  // - 확인자는 작업자와 다른 계정으로 로그인해야 서명 가능
+  const workerTd = document.createElement('td');
+  const checkerTd = document.createElement('td');
+  renderWorkerCell(workerTd, rowObj, checkerTd);
+  renderCheckerCell(checkerTd, rowObj, workerTd);
+  tr.appendChild(workerTd);
+  tr.appendChild(checkerTd);
+
+  // 비고
+  {
+    const td = document.createElement('td');
+    const input = document.createElement('input');
+    input.type='text';
+    input.value = rowObj.note || '';
+    input.placeholder = '비고';
+    input.readOnly = isEditBlocked();
+    input.addEventListener('input', ()=>{ rowObj.note = input.value; setDirty(true); });
+    td.appendChild(input);
+    tr.appendChild(td);
+  }
+
+  const delTd = document.createElement('td');
+  delTd.className='col-del';
+  const delBtn = document.createElement('button');
+  delBtn.textContent='✕';
+  delBtn.title='행 삭제';
+  if(isEditBlocked()) delBtn.disabled = true;
+  delBtn.addEventListener('click', ()=>{
+    if(isEditBlocked()){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
+    if(!confirm('이 행을 삭제하시겠습니까?')) return;
+    const idx = currentSheet.rows.indexOf(rowObj);
+    if(idx>-1) currentSheet.rows.splice(idx,1);
+    tr.remove();
+    setDirty(true);
+    document.querySelector('.grid-actions div[style]').textContent = `총 ${currentSheet.rows.length}행`;
+  });
+  delTd.appendChild(delBtn);
+  tr.appendChild(delTd);
+  return tr;
+}
+
+/* ============================================================
+   SAVE
+============================================================ */
+document.getElementById('save-btn').addEventListener('click', async ()=>{
+  if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
+  if(isEditBlocked()){ toast('보기 전용 모드에서는 저장할 수 없습니다.', true); return; }
+
+  // 이미 저장된 기록에서 실제로 값이 바뀐 행이 있으면, 수정 사유를 받아 해당 행의 비고란에 기록
+  if(isEditingExisting){
+    const changedRows = currentSheet.rows.filter(r =>
+      rowSnapshotMap.has(r) && JSON.stringify(r) !== rowSnapshotMap.get(r)
+    );
+    if(changedRows.length > 0){
+      const reason = prompt(`${changedRows.length}개 행이 수정되었습니다. 수정 사유를 입력해주세요. (해당 행의 비고란에 기록됩니다)`);
+      if(!reason || !reason.trim()){
+        toast('수정 사유를 입력해야 저장할 수 있습니다.', true);
+        return;
+      }
+      const now = new Date();
+      const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const who = currentUser ? ` / ${displayName(currentUser)}` : '';
+      const entry = `[수정 ${stamp}${who}] ${reason.trim()}`;
+      changedRows.forEach(r=>{
+        r.note = r.note ? `${r.note} / ${entry}` : entry;
+      });
+      renderLedger();
+    }
+  }
+
+  currentSheet.year = parseInt(document.getElementById('sel-year').value,10);
+  currentSheet.month = parseInt(document.getElementById('sel-month').value,10);
+  currentSheet.product = document.getElementById('sel-product').value.trim();
+  currentSheet.device = document.getElementById('sel-device').value.trim();
+  currentSheet.location = document.getElementById('sel-location').value.trim();
+  currentSheet.updatedAt = new Date().toISOString();
+
+  try{
+    await saveSheetById(currentSheetId, currentSheet);
+    const metaIdx = sheetIndex.findIndex(s=>s.id===currentSheetId);
+    const meta = {
+      id: currentSheetId,
+      year: currentSheet.year, month: currentSheet.month,
+      product: currentSheet.product, device: currentSheet.device, location: currentSheet.location,
+      updatedAt: currentSheet.updatedAt
+    };
+    if(metaIdx>-1) sheetIndex[metaIdx] = meta; else sheetIndex.push(meta);
+    await saveSheetIndex();
+    setDirty(false);
+    isEditingExisting = true;
+    rowSnapshotMap = new Map();
+    currentSheet.rows.forEach(r => rowSnapshotMap.set(r, JSON.stringify(r)));
+    renderRecordList(document.getElementById('record-search-input').value);
+    toast('저장되었습니다.');
+  }catch(e){
+    toast('저장 중 오류가 발생했습니다.', true);
+  }
+});
+
+/* ============================================================
+   EXCEL EXPORT (matches original template structure)
+============================================================ */
+document.getElementById('download-btn').addEventListener('click', ()=>{
+  if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
+  try{
+    const wb = buildWorkbook(currentSheet);
+    const fname = `기기가동기록서_${sanitize(currentSheet.device)||'기기'}_${currentSheet.year}${String(currentSheet.month).padStart(2,'0')}.xlsx`;
+    XLSX.writeFile(wb, fname);
+    toast('엑셀 파일이 다운로드되었습니다.');
+  }catch(e){
+    console.error(e);
+    toast('엑셀 생성 중 오류가 발생했습니다.', true);
+  }
+});
+
+function buildWorkbook(sheet){
+  const rows = sheet.rows.length >= DAYS_MIN_ROWS
+    ? sheet.rows
+    : [...sheet.rows, ...Array.from({length: DAYS_MIN_ROWS - sheet.rows.length}, blankRow)];
+
+  const firstDataRowIdx = 4;                     // 0-indexed row for first data row (row 5 in 1-indexed)
+  const lastDataRowIdx = firstDataRowIdx + rows.length - 1;
+  const footerLabelRowIdx = lastDataRowIdx + 1;
+  const footerBoxEndRowIdx = footerLabelRowIdx + 3; // label row + 3 more rows
+  const totalRows = footerBoxEndRowIdx + 1;
+
+  const aoa = Array.from({length: totalRows}, ()=> new Array(9).fill(''));
+
+  aoa[0][0] = '기기가동 기록서';
+  aoa[1][0] = `${sheet.year||''}년  ${sheet.month||''}월`;
+  aoa[2][0] = '기 기 명';
+  aoa[2][2] = sheet.device ? (sheet.product ? `${sheet.device} (${sheet.product})` : sheet.device) : '';
+  aoa[2][4] = '설치장소';
+  aoa[2][5] = sheet.location || '';
+  aoa[3] = ['날짜','사용시간','','제조번호','','작업공정','작업자','확인자','비고'];
+
+  rows.forEach((r, i)=>{
+    const ri = firstDataRowIdx + i;
+    aoa[ri][0] = r.date || '';
+    aoa[ri][1] = r.time || '';
+    aoa[ri][3] = r.mfgNo || '';
+    aoa[ri][5] = r.process || '';
+    aoa[ri][6] = r.worker ? displayName(r.worker) : '';
+    aoa[ri][7] = r.checker ? displayName(r.checker) : '';
+    aoa[ri][8] = r.note || '';
+  });
+
+  aoa[footerLabelRowIdx][0] = sheet.footerNote ? ` 비 고 : ${sheet.footerNote}` : ' 비 고';
+  aoa[footerLabelRowIdx][5] = '담당자';
+  aoa[footerLabelRowIdx][7] = '승인자';
+  aoa[footerLabelRowIdx+1][5] = sheet.manager ? displayName(sheet.manager) : '';
+  aoa[footerLabelRowIdx+1][7] = sheet.approver ? displayName(sheet.approver) : '';
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  const merges = [
+    {s:{r:0,c:0}, e:{r:0,c:8}},
+    {s:{r:1,c:0}, e:{r:1,c:8}},
+    {s:{r:2,c:0}, e:{r:2,c:1}},
+    {s:{r:2,c:2}, e:{r:2,c:3}},
+    {s:{r:2,c:5}, e:{r:2,c:8}},
+    {s:{r:3,c:1}, e:{r:3,c:2}},
+    {s:{r:3,c:3}, e:{r:3,c:4}},
+  ];
+  for(let i=0;i<rows.length;i++){
+    const ri = firstDataRowIdx + i;
+    merges.push({s:{r:ri,c:1}, e:{r:ri,c:2}});
+    merges.push({s:{r:ri,c:3}, e:{r:ri,c:4}});
+  }
+  merges.push({s:{r:footerLabelRowIdx,c:0}, e:{r:footerBoxEndRowIdx,c:4}});
+  merges.push({s:{r:footerLabelRowIdx,c:5}, e:{r:footerLabelRowIdx,c:6}});
+  merges.push({s:{r:footerLabelRowIdx,c:7}, e:{r:footerLabelRowIdx,c:8}});
+  merges.push({s:{r:footerLabelRowIdx+1,c:5}, e:{r:footerBoxEndRowIdx,c:6}});
+  merges.push({s:{r:footerLabelRowIdx+1,c:7}, e:{r:footerBoxEndRowIdx,c:8}});
+  ws['!merges'] = merges;
+
+  ws['!cols'] = [
+    {wch:9},{wch:9},{wch:6},{wch:10},{wch:6},{wch:12},{wch:9},{wch:9},{wch:16}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  return wb;
+}
+
+/* ============================================================
+   GOOGLE DRIVE 저장
+   - 엑셀(.xlsx) 다운로드 파일을 구글드라이브의 "기기가동기록서"
+     폴더에 자동 업로드합니다.
+   - 사용 전 준비물: Google Cloud Console에서 OAuth 클라이언트 ID(웹
+     애플리케이션)를 발급받아 아래 GOOGLE_CLIENT_ID 값에 넣어주세요.
+     "승인된 자바스크립트 원본(Authorized JavaScript origins)"에는
+     이 페이지를 여는 실제 주소(예: https://your-domain.com 또는
+     http://localhost:포트번호)를 등록해야 합니다.
+     ※ 파일을 그냥 더블클릭해서 여는 file:// 방식에서는 구글 로그인이
+        동작하지 않습니다. 반드시 http(s) 서버로 열어야 합니다.
+============================================================ */
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const GDRIVE_FOLDER_NAME = '기기가동기록서';
+
+let gdriveTokenClientObj = null;
+let gdriveAccessToken = null;
+let gdriveFolderId = null;
+
+function isGDriveConfigured(){
+  return !!GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf('YOUR_GOOGLE_CLIENT_ID') !== 0;
+}
+
+function getGDriveClient(){
+  if(typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) return null;
+  if(!isGDriveConfigured()) return null;
+  if(!gdriveTokenClientObj){
+    gdriveTokenClientObj = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GDRIVE_SCOPE,
+      callback: ()=>{}, // 매 호출마다 아래에서 덮어씀
+    });
+  }
+  return gdriveTokenClientObj;
+}
+
+function requestGDriveToken(){
+  return new Promise((resolve, reject)=>{
+    const client = getGDriveClient();
+    if(!client){ reject(new Error('NOT_CONFIGURED')); return; }
+    client.callback = (resp)=>{
+      if(!resp || resp.error){ reject(new Error((resp && resp.error) || 'AUTH_FAILED')); return; }
+      gdriveAccessToken = resp.access_token;
+      resolve(gdriveAccessToken);
+    };
+    client.error_callback = (err)=>{ reject(err || new Error('AUTH_FAILED')); };
+    client.requestAccessToken({ prompt: '' });
+  });
+}
+
+async function ensureGDriveToken(){
+  if(gdriveAccessToken) return gdriveAccessToken;
+  return requestGDriveToken();
+}
+
+async function getGDriveFolderId(token){
+  if(gdriveFolderId) return gdriveFolderId;
+  const q = encodeURIComponent(`name='${GDRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+    headers: { Authorization: 'Bearer ' + token }
+  });
+  if(!res.ok) throw new Error('DRIVE_API_ERROR');
+  const data = await res.json();
+  if(data.files && data.files.length > 0){
+    gdriveFolderId = data.files[0].id;
+    return gdriveFolderId;
+  }
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: GDRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  });
+  if(!createRes.ok) throw new Error('DRIVE_API_ERROR');
+  const created = await createRes.json();
+  gdriveFolderId = created.id;
+  return gdriveFolderId;
+}
+
+async function uploadXlsxToDrive(blob, filename, isRetry){
+  const token = await ensureGDriveToken();
+  try{
+    const folderId = await getGDriveFolderId(token);
+    const metadata = { name: filename, parents: [folderId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', blob);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: form
+    });
+    if(res.status === 401 && !isRetry){
+      gdriveAccessToken = null;
+      gdriveFolderId = null;
+      return uploadXlsxToDrive(blob, filename, true);
+    }
+    if(!res.ok) throw new Error('DRIVE_UPLOAD_ERROR');
+    return await res.json();
+  }catch(e){
+    if(!isRetry && e.message === 'DRIVE_API_ERROR'){
+      gdriveAccessToken = null;
+      gdriveFolderId = null;
+      return uploadXlsxToDrive(blob, filename, true);
+    }
+    throw e;
+  }
+}
+
+document.getElementById('gdrive-btn').addEventListener('click', async ()=>{
+  if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
+  if(!isGDriveConfigured()){
+    toast('구글드라이브 연동이 아직 설정되지 않았습니다. (관리자에게 문의하세요)', true);
+    return;
+  }
+  const btn = document.getElementById('gdrive-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '업로드 중...';
+  try{
+    const wb = buildWorkbook(currentSheet);
+    const arrayBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([arrayBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const fname = `기기가동기록서_${sanitize(currentSheet.device)||'기기'}_${currentSheet.year}${String(currentSheet.month).padStart(2,'0')}.xlsx`;
+    await uploadXlsxToDrive(blob, fname);
+    toast('구글드라이브에 저장되었습니다. ("' + GDRIVE_FOLDER_NAME + '" 폴더 확인)');
+  }catch(e){
+    console.error(e);
+    if(e && e.message === 'NOT_CONFIGURED'){
+      toast('구글드라이브 연동이 아직 설정되지 않았습니다. (관리자에게 문의하세요)', true);
+    } else {
+      toast('구글드라이브 저장 중 오류가 발생했습니다. 다시 시도해주세요.', true);
+    }
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
+/* ============================================================
+   INIT
+============================================================ */
+window.addEventListener('beforeunload', ()=>{
+  if(currentUser && isPrimarySession && mySessionId){
+    if(useServerApi){
+      fetch('/api/global-session', {
+        method: 'DELETE',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: mySessionId }),
+      });
+    } else {
+      deleteGlobalSession();
+    }
+  }
+});
+
+(async function bootstrap(){
+  await initStorageBackend();
+  initLoginScreen();
+})();
+</script>
+</body>
+</html>
 
