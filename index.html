@@ -357,23 +357,6 @@
   .info-cell:last-child{border-right:none;flex:1;}
   .info-cell .lbl{font-weight:700;color:var(--ink-soft);white-space:nowrap;font-size:12px;}
   .info-cell .val{font-weight:500;}
-  .info-cell .loc-input{
-    flex:1;
-    min-width:0;
-    border:1px solid var(--paper-line);
-    background:#fff59d;
-    color:var(--ink);
-    font-size:13px;
-    font-weight:600;
-    padding:6px 8px;
-    border-radius:2px;
-    outline:none;
-    font-family:'Noto Sans KR',sans-serif;
-  }
-  .info-cell .loc-input:focus{
-    border-color:var(--amber-dark);
-    background:#ffef6b;
-  }
 
   table.grid{
     width:100%;
@@ -1202,7 +1185,7 @@ function populateDeviceLocation(){
 }
 
 function applyDeviceLocation(){
-  /* 설치장소 선택란 없음 — 기록서 노란색 입력란에서 수정 */
+  /* 설치장소는 기기명 선택 시 자동 표시(수정 불가) */
 }
 
 function fillDeviceOptions(productCode){
@@ -1355,8 +1338,8 @@ async function openSheet(id, metaIfNew){
   document.getElementById('sel-product').value = data.product || '';
   fillDeviceOptions(data.product || '');
   document.getElementById('sel-device').value = data.device;
-  // 저장값보다 기기 매핑 우선 (없으면 기존 기록값 유지)
-  data.location = data.location || locationForDevice(data.device) || '';
+  // 저장값보다 기기 매핑 우선 — 설치장소는 기기명에 따라 자동 표시(수정 불가)
+  data.location = locationForDevice(data.device) || '';
   currentSheet.location = data.location;
 
   renderLedger();
@@ -1381,12 +1364,7 @@ function renderLedger(){
       <div class="ledger-info-row">
         <div class="info-cell" style="flex:1"><span class="lbl">품 목 명</span><span class="val">${escapeHtml(s.product)||'-'}</span></div>
         <div class="info-cell" style="flex:1"><span class="lbl">기 기 명</span><span class="val">${escapeHtml(s.device)||'-'}</span></div>
-        <div class="info-cell" style="flex:1.2">
-          <span class="lbl">설치장소</span>
-          <input type="text" class="loc-input" id="sheet-location-input"
-                 value="${escapeHtml(s.location)||''}"
-                 placeholder="ex) 합성동 2층" ${isEditBlocked()?'readonly':''}>
-        </div>
+        <div class="info-cell" style="flex:1.2"><span class="lbl">설치장소</span><span class="val" id="sheet-location-val">${escapeHtml(s.location)||'-'}</span></div>
       </div>
       <div style="overflow-x:auto;">
         <table class="grid" id="grid-table">
@@ -1446,14 +1424,6 @@ function renderLedger(){
 
   const tbody = document.getElementById('grid-tbody');
   s.rows.forEach(row => tbody.appendChild(createRowEl(row)));
-
-  const locInput = document.getElementById('sheet-location-input');
-  if(locInput){
-    locInput.addEventListener('input', ()=>{
-      currentSheet.location = locInput.value.trim();
-      setDirty(true);
-    });
-  }
 
   document.getElementById('add-row-btn').addEventListener('click', ()=>{
     if(isEditBlocked()){ toast('보기 전용 모드에서는 행을 추가할 수 없습니다.', true); return; }
@@ -1774,11 +1744,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   currentSheet.month = parseInt(document.getElementById('sel-month').value,10);
   currentSheet.product = document.getElementById('sel-product').value.trim();
   currentSheet.device = document.getElementById('sel-device').value.trim();
-  const locEl = document.getElementById('sheet-location-input');
-  if(locEl) currentSheet.location = locEl.value.trim();
-  if(!currentSheet.location){
-    currentSheet.location = locationForDevice(currentSheet.device) || '';
-  }
+  currentSheet.location = locationForDevice(currentSheet.device) || '';
   currentSheet.updatedAt = new Date().toISOString();
 
   try{
