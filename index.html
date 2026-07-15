@@ -781,8 +781,15 @@ function processesForDevice(device){
 }
 
 const WORKER_CODES = ['ajtwh7481','psw','khd4323','leel119'];
-const MANAGER_CODES = ['khd4323','leel119'];
-const APPROVER_CODES = ['ccs'];
+const MANAGER_CODES = ['leel119','khd4323']; // 김봉수, 김희두
+const APPROVER_CODES = ['ccs']; // 최창식
+
+function canSelectManager(){
+  return !!currentUser && MANAGER_CODES.includes(currentUser);
+}
+function canSelectApprover(){
+  return !!currentUser && APPROVER_CODES.includes(currentUser);
+}
 
 // 아이디 -> 표시 이름
 const USER_NAMES = {
@@ -1412,7 +1419,7 @@ function renderLedger(){
         <div class="footer-cell">
           <div class="footer-label">담당자</div>
           <div class="sign-box">
-            <select id="footer-manager" class="sign-select">
+            <select id="footer-manager" class="sign-select" ${(!canSelectManager() || isEditBlocked()) ? 'disabled' : ''}>
               <option value="">선택</option>
               ${MANAGER_CODES.map(c=>`<option value="${c}" ${s.manager===c?'selected':''}>${displayName(c)}</option>`).join('')}
             </select>
@@ -1422,7 +1429,7 @@ function renderLedger(){
         <div class="footer-cell">
           <div class="footer-label">승인자</div>
           <div class="sign-box">
-            <select id="footer-approver" class="sign-select">
+            <select id="footer-approver" class="sign-select" ${(!canSelectApprover() || isEditBlocked()) ? 'disabled' : ''}>
               <option value="">선택</option>
               ${APPROVER_CODES.map(c=>`<option value="${c}" ${s.approver===c?'selected':''}>${displayName(c)}</option>`).join('')}
             </select>
@@ -1470,8 +1477,26 @@ function renderLedger(){
   const footerManagerEl = document.getElementById('footer-manager');
   const footerApproverEl = document.getElementById('footer-approver');
   footerNoteEl.addEventListener('input', (e)=>{ s.footerNote = e.target.value; setDirty(true); });
-  footerManagerEl.addEventListener('change', (e)=>{ s.manager = e.target.value; setDirty(true); refreshStamp('footer-manager', s.manager); });
-  footerApproverEl.addEventListener('change', (e)=>{ s.approver = e.target.value; setDirty(true); refreshStamp('footer-approver', s.approver); });
+  footerManagerEl.addEventListener('change', (e)=>{
+    if(!canSelectManager()){
+      toast('담당자는 김봉수·김희두 계정으로 로그인해야 선택할 수 있습니다.', true);
+      footerManagerEl.value = s.manager || '';
+      return;
+    }
+    s.manager = e.target.value;
+    setDirty(true);
+    refreshStamp('footer-manager', s.manager);
+  });
+  footerApproverEl.addEventListener('change', (e)=>{
+    if(!canSelectApprover()){
+      toast('승인자는 최창식 계정으로 로그인해야 선택할 수 있습니다.', true);
+      footerApproverEl.value = s.approver || '';
+      return;
+    }
+    s.approver = e.target.value;
+    setDirty(true);
+    refreshStamp('footer-approver', s.approver);
+  });
 
   if(isEditBlocked()){
     document.getElementById('add-row-btn').disabled = true;
