@@ -212,6 +212,28 @@
   .mode-badge.server{border-color:var(--teal);color:#7fd8c9;}
   .mode-badge.local{border-color:var(--danger);color:#ff9a8f;}
   .file-warning{background:rgba(168,51,42,.2);border:1px solid var(--danger);color:#ff9a8f;font-size:12.5px;padding:10px 12px;border-radius:3px;margin-bottom:14px;line-height:1.6;}
+  .mode-badge{
+    font-size:11px;padding:4px 10px;border-radius:20px;
+    border:1px solid var(--steel-line);color:#9aa1a6;
+  }
+  .mode-badge.server{border-color:var(--teal);color:#7fd8c9;}
+  .mode-badge.local{border-color:var(--danger);color:#ff9a8f;}
+  .file-warning{
+    background:rgba(168,51,42,.2);border:1px solid var(--danger);
+    color:#ff9a8f;font-size:12.5px;padding:10px 12px;border-radius:3px;
+    margin-bottom:14px;line-height:1.6;
+  }
+  .sign-note.readonly-note{color:var(--amber-dark);}
+  input:disabled, select:disabled, textarea:disabled,
+  input[readonly], textarea[readonly]{
+    opacity:.65;
+    cursor:not-allowed;
+  }
+  .btn:disabled, .sign-btn:disabled, .link-btn:disabled{
+    opacity:.4;
+    cursor:not-allowed;
+    pointer-events:none;
+  }
 
   .record-search input{
     width:100%;
@@ -335,23 +357,6 @@
   .info-cell:last-child{border-right:none;flex:1;}
   .info-cell .lbl{font-weight:700;color:var(--ink-soft);white-space:nowrap;font-size:12px;}
   .info-cell .val{font-weight:500;}
-  .info-cell .loc-input{
-    flex:1;
-    min-width:0;
-    border:1px solid var(--paper-line);
-    background:#fff59d;
-    color:var(--ink);
-    font-size:13px;
-    font-weight:600;
-    padding:6px 8px;
-    border-radius:2px;
-    outline:none;
-    font-family:'Noto Sans KR',sans-serif;
-  }
-  .info-cell .loc-input:focus{
-    border-color:var(--amber-dark);
-    background:#ffef6b;
-  }
 
   table.grid{
     width:100%;
@@ -644,11 +649,6 @@
         <label>기기명</label>
         <select id="sel-device" class="wide"></select>
       </div>
-      <!-- 설치장소 입력 필드 추가 -->
-      <div class="tb-field">
-        <label>설치장소</label>
-        <input type="text" id="sel-location" class="wide" placeholder="설치장소 입력">
-      </div>
       <button class="btn btn-teal" id="load-btn">불러오기 / 새 기록</button>
       <div class="tb-spacer"></div>
       <span class="status-chip" id="status-chip">기록을 불러오세요</span>
@@ -675,13 +675,14 @@
 ============================================================ */
 let currentUser = null;
 let signupMode = false;
-let sheetIndex = [];      
-let currentSheet = null;  
+let sheetIndex = [];      // shared list of saved sheet metadata
+let currentSheet = null;  // currently loaded/editing sheet object
 let currentSheetId = null;
 let isDirty = false;
-let isEditingExisting = false;   
-let rowSnapshotMap = new Map();  
+let isEditingExisting = false;   // true if this sheet already existed in storage when opened
+let rowSnapshotMap = new Map();  // rowObj -> JSON string at last load/save, to detect which specific rows changed
 
+// ---- 동시 로그인 허용 (제한 없음) ----
 let mySessionId = null;
 let isPrimarySession = false;
 let sessionHeartbeatTimer = null;
@@ -718,6 +719,7 @@ const LOCATION_CODES = [
   '건조실2층1','건조실2층2'
 ];
 
+// 품목명 -> 해당 품목에서 사용하는 기기명 목록
 const PRODUCT_DEVICE_MAP = {
   'O0711RE': ['RS-201','NF-102','VD-101'],
   'G0720RE': ['RS-205','NF-105','VD-202'],
@@ -729,6 +731,7 @@ const PRODUCT_DEVICE_MAP = {
 };
 const PRODUCT_CODES = Object.keys(PRODUCT_DEVICE_MAP);
 
+// 기기명 -> 설치장소 자동 매핑
 const DEVICE_LOCATION_MAP = {
   'RS-201':'합성동 2층','RS-202':'합성동 2층','RG-203':'합성동 2층','RS-204':'합성동 2층','RS-205':'합성동 2층','RG-206':'합성동 2층',
   'RS-301':'합성동 3층','RS-302':'합성동 3층',
@@ -739,6 +742,7 @@ const DEVICE_LOCATION_MAP = {
   'RG-205':'합성동 2층'
 };
 
+// RS/RG=반응기(정제), NF=여과기(여과), VD=건조기(건조) + CS
 const DEVICE_PROCESS_MAP = {
   'RS-201':['정제','CS'],'RS-202':['정제','CS'],'RG-203':['정제','CS'],
   'RS-204':['정제','CS'],'RS-205':['정제','CS'],'RG-206':['정제','CS'],
@@ -760,8 +764,8 @@ function processesForDevice(device){
 }
 
 const WORKER_CODES = ['ajtwh7481','psw','khd4323','leel119'];
-const MANAGER_CODES = ['leel119','khd4323']; 
-const APPROVER_CODES = ['ccs']; 
+const MANAGER_CODES = ['leel119','khd4323']; // 김봉수, 김희두
+const APPROVER_CODES = ['ccs']; // 최창식
 
 function canSelectManager(){
   return !!currentUser && MANAGER_CODES.includes(currentUser);
@@ -770,6 +774,7 @@ function canSelectApprover(){
   return !!currentUser && APPROVER_CODES.includes(currentUser);
 }
 
+// 아이디 -> 표시 이름
 const USER_NAMES = {
   'leel119':'김봉수',
   'ccs':'최창식',
@@ -803,6 +808,12 @@ function setDirty(v){
 
 /* ============================================================
    STORAGE LAYER
+   - Inside Claude.ai artifact preview: uses window.storage (shared
+     across everyone who opens this artifact there).
+   - As a standalone downloaded .html file (double-clicked / hosted
+     on a server): window.storage does not exist, so this falls
+     back to the browser's localStorage. In that mode, data is only
+     stored on that one computer/browser, not shared across devices.
 ============================================================ */
 const LS_PREFIX = 'eqlog__';
 let storageModeNotified = false;
@@ -856,6 +867,11 @@ function notifyStorageMode(){
   if(storageModeNotified) return;
   storageModeNotified = true;
   const mode = storageModeLabel();
+  if(mode === 'local'){
+    console.info('[기기가동 기록서] 독립 실행: 이 PC 브라우저에만 저장됩니다. 회사 공유는 시작.bat 서버로 접속하세요.');
+  } else if(mode === 'server'){
+    console.info('[기기가동 기록서] 회사 공유망 서버 연결됨.');
+  }
 }
 
 function updateModeBadge(){
@@ -958,12 +974,13 @@ async function deleteSheetById(id){
 }
 
 /* ============================================================
-   SESSION
+   SESSION (동시 로그인 허용 — 차단/보기전용 없음)
 ============================================================ */
 function makeSessionId(){
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/** @returns {{ok:boolean}} */
 async function establishSession(){
   mySessionId = makeSessionId();
   loginBlockedBy = null;
@@ -972,7 +989,7 @@ async function establishSession(){
   return { ok: true };
 }
 
-function startSessionHeartbeat(){ }
+function startSessionHeartbeat(){ /* no-op */ }
 function stopSessionHeartbeat(){
   if(sessionHeartbeatTimer){ clearInterval(sessionHeartbeatTimer); sessionHeartbeatTimer = null; }
 }
@@ -999,6 +1016,10 @@ function updateReadOnlyUI(){
 function isEditBlocked(){
   return false;
 }
+
+function updateSheetLockUI(){ /* no-op */ }
+async function releaseSheetLock(){ /* no-op */ }
+async function acquireSheetLock(id){ /* no-op */ }
 
 /* ============================================================
    LOGIN
@@ -1102,6 +1123,7 @@ document.getElementById('logout-btn').addEventListener('click', async ()=>{
   if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 로그아웃하시겠습니까?')) return;
   stopReadOnlyRecheck();
   await releaseSession();
+  await releaseSheetLock();
   currentUser = null;
   currentSheet = null;
   currentSheetId = null;
@@ -1151,7 +1173,6 @@ function locationForDevice(device){
 function populateDeviceLocation(){
   const pSel = document.getElementById('sel-product');
   const dSel = document.getElementById('sel-device');
-  const lInput = document.getElementById('sel-location');
 
   pSel.innerHTML = '<option value="">품목명 선택 (전체)</option>' +
     PRODUCT_CODES.map(c=>`<option value="${c}">${c}</option>`).join('');
@@ -1161,15 +1182,10 @@ function populateDeviceLocation(){
   pSel.onchange = ()=>{
     fillDeviceOptions(pSel.value);
   };
+}
 
-  // 기기 선택 시 툴바의 설치장소 자동 변경
-  dSel.onchange = ()=>{
-    if(dSel.value){
-      lInput.value = locationForDevice(dSel.value);
-    } else {
-      lInput.value = '';
-    }
-  };
+function applyDeviceLocation(){
+  /* 설치장소는 기기명 선택 시 자동 표시(수정 불가) */
 }
 
 function fillDeviceOptions(productCode){
@@ -1180,6 +1196,7 @@ function fillDeviceOptions(productCode){
   const prevValue = dSel.value;
   dSel.innerHTML = '<option value="">기기명 선택</option>' +
     list.map(c=>`<option value="${c}">${c}</option>`).join('');
+  // 이전에 선택돼 있던 값이 새 목록에도 있으면 유지
   if(list.includes(prevValue)) dSel.value = prevValue;
 }
 
@@ -1205,7 +1222,7 @@ function populateYearMonth(){
 }
 
 /* ============================================================
-   RECORD LIST
+   RECORD LIST (sidebar)
 ============================================================ */
 function renderRecordList(filter){
   const list = document.getElementById('record-list');
@@ -1239,12 +1256,15 @@ function renderRecordList(filter){
       e.stopPropagation();
       if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
       const id = btn.dataset.del;
+      if(id===currentSheetId && isSheetReadOnly){ toast(`${displayName(sheetLockedByUser)}님이 편집 중인 기록은 삭제할 수 없습니다.`, true); return; }
       const meta = sheetIndex.find(s=>s.id===id);
       if(!confirm(`"${meta.device} / ${meta.year}년 ${meta.month}월" 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return;
       await deleteSheetById(id);
+      await deleteSheetLock(id);
       sheetIndex = sheetIndex.filter(s=>s.id!==id);
       await saveSheetIndex();
       if(currentSheetId===id){
+        await releaseSheetLock();
         currentSheet = null;
         currentSheetId = null;
         document.getElementById('ledger-area').innerHTML='';
@@ -1275,9 +1295,10 @@ document.getElementById('load-btn').addEventListener('click', async ()=>{
   const month = parseInt(document.getElementById('sel-month').value,10);
   const product = document.getElementById('sel-product').value.trim();
   const device = document.getElementById('sel-device').value.trim();
-  const location = document.getElementById('sel-location').value.trim() || '미지정';
+  const location = locationForDevice(device) || '미지정';
 
   if(!device){ toast('기기명을 선택하세요.', true); return; }
+
   if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
 
   const id = makeSheetId(year, month, device, location);
@@ -1285,6 +1306,11 @@ document.getElementById('load-btn').addEventListener('click', async ()=>{
 });
 
 async function openSheet(id, metaIfNew){
+  // 이전에 열려있던 다른 기록의 편집 잠금은 여기서 반납
+  if(currentSheetId && currentSheetId !== id){
+    await releaseSheetLock();
+  }
+
   let data = await loadSheetById(id);
   isEditingExisting = !!data;
   if(!data){
@@ -1312,7 +1338,9 @@ async function openSheet(id, metaIfNew){
   document.getElementById('sel-product').value = data.product || '';
   fillDeviceOptions(data.product || '');
   document.getElementById('sel-device').value = data.device;
-  document.getElementById('sel-location').value = data.location || '';
+  // 저장값보다 기기 매핑 우선 — 설치장소는 기기명에 따라 자동 표시(수정 불가)
+  data.location = locationForDevice(data.device) || '';
+  currentSheet.location = data.location;
 
   renderLedger();
   document.getElementById('bottom-actions').style.display='flex';
@@ -1321,7 +1349,7 @@ async function openSheet(id, metaIfNew){
 }
 
 /* ============================================================
-   LEDGER RENDER
+   LEDGER RENDER (the "paper" grid)
 ============================================================ */
 function renderLedger(){
   const area = document.getElementById('ledger-area');
@@ -1336,12 +1364,7 @@ function renderLedger(){
       <div class="ledger-info-row">
         <div class="info-cell" style="flex:1"><span class="lbl">품 목 명</span><span class="val">${escapeHtml(s.product)||'-'}</span></div>
         <div class="info-cell" style="flex:1"><span class="lbl">기 기 명</span><span class="val">${escapeHtml(s.device)||'-'}</span></div>
-        <div class="info-cell" style="flex:1.2">
-          <span class="lbl">설치장소</span>
-          <input type="text" class="loc-input" id="sheet-location-input"
-                 value="${escapeHtml(s.location)||''}"
-                 placeholder="설치장소 입력" ${isEditBlocked()?'readonly':''}>
-        </div>
+        <div class="info-cell" style="flex:1.2"><span class="lbl">설치장소</span><span class="val" id="sheet-location-val">${escapeHtml(s.location)||'-'}</span></div>
       </div>
       <div style="overflow-x:auto;">
         <table class="grid" id="grid-table">
@@ -1401,17 +1424,6 @@ function renderLedger(){
 
   const tbody = document.getElementById('grid-tbody');
   s.rows.forEach(row => tbody.appendChild(createRowEl(row)));
-
-  const locInput = document.getElementById('sheet-location-input');
-  if(locInput){
-    locInput.addEventListener('input', ()=>{
-      currentSheet.location = locInput.value.trim();
-      // 내부 입력창 수정 시 상단 툴바 설치장소도 동기화
-      const toolbarLoc = document.getElementById('sel-location');
-      if(toolbarLoc) toolbarLoc.value = locInput.value.trim();
-      setDirty(true);
-    });
-  }
 
   document.getElementById('add-row-btn').addEventListener('click', ()=>{
     if(isEditBlocked()){ toast('보기 전용 모드에서는 행을 추가할 수 없습니다.', true); return; }
@@ -1482,6 +1494,9 @@ function refreshStamp(inputId, value){
 
 /* ============================================================
    WORKER / CHECKER SIGN CELLS
+   - 작업자는 로그인한 본인 계정으로만 서명 가능 (아이디 저장, 화면엔 이름 표시)
+   - 확인자는 작업자 서명이 먼저 있어야 하고, 작업자와 다른 계정으로
+     로그인해야만 서명 버튼이 활성화됨
 ============================================================ */
 function renderWorkerCell(td, rowObj, checkerTd){
   td.innerHTML = '';
@@ -1583,7 +1598,7 @@ function renderCheckerCell(td, rowObj, workerTd){
   if(currentUser === rowObj.worker){
     const note = document.createElement('span');
     note.className = 'sign-note';
-    note.textContent = '다른 계정 서명 필요';
+    note.textContent = '다른 계정으로 로그인 후 서명 가능';
     td.appendChild(note);
     return;
   }
@@ -1621,6 +1636,7 @@ function createRowEl(rowObj){
     tr.appendChild(td);
   });
 
+  // 작업공정: 기기별 선택 (RS/RG=정제, NF=여과, VD=건조 + CS)
   {
     const td = document.createElement('td');
     const procs = processesForDevice(currentSheet && currentSheet.device);
@@ -1652,6 +1668,9 @@ function createRowEl(rowObj){
     tr.appendChild(td);
   }
 
+  // 작업자 / 확인자: 직접 서명(로그인 계정) 방식
+  // - 작업자가 먼저 서명해야 확인자 서명이 가능
+  // - 확인자는 작업자와 다른 계정으로 로그인해야 서명 가능
   const workerTd = document.createElement('td');
   const checkerTd = document.createElement('td');
   renderWorkerCell(workerTd, rowObj, checkerTd);
@@ -1659,11 +1678,12 @@ function createRowEl(rowObj){
   tr.appendChild(workerTd);
   tr.appendChild(checkerTd);
 
+  // 비고
   {
     const td = document.createElement('td');
     const input = document.createElement('input');
     input.type='text';
-    input.value = rowObj[note] || '';
+    input.value = rowObj.note || '';
     input.placeholder = '비고';
     input.readOnly = isEditBlocked();
     input.addEventListener('input', ()=>{ rowObj.note = input.value; setDirty(true); });
@@ -1698,6 +1718,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
   if(isEditBlocked()){ toast('보기 전용 모드에서는 저장할 수 없습니다.', true); return; }
 
+  // 이미 저장된 기록에서 실제로 값이 바뀐 행이 있으면, 수정 사유를 받아 해당 행의 비고란에 기록
   if(isEditingExisting){
     const changedRows = currentSheet.rows.filter(r =>
       rowSnapshotMap.has(r) && JSON.stringify(r) !== rowSnapshotMap.get(r)
@@ -1723,12 +1744,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   currentSheet.month = parseInt(document.getElementById('sel-month').value,10);
   currentSheet.product = document.getElementById('sel-product').value.trim();
   currentSheet.device = document.getElementById('sel-device').value.trim();
-  
-  const locEl = document.getElementById('sheet-location-input');
-  if(locEl) currentSheet.location = locEl.value.trim();
-  if(!currentSheet.location){
-    currentSheet.location = document.getElementById('sel-location').value.trim() || locationForDevice(currentSheet.device) || '미지정';
-  }
+  currentSheet.location = locationForDevice(currentSheet.device) || '';
   currentSheet.updatedAt = new Date().toISOString();
 
   try{
@@ -1754,7 +1770,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
 });
 
 /* ============================================================
-   EXCEL EXPORT
+   EXCEL EXPORT (matches original template structure)
 ============================================================ */
 document.getElementById('download-btn').addEventListener('click', ()=>{
   if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
@@ -1774,10 +1790,10 @@ function buildWorkbook(sheet){
     ? sheet.rows
     : [...sheet.rows, ...Array.from({length: DAYS_MIN_ROWS - sheet.rows.length}, blankRow)];
 
-  const firstDataRowIdx = 4;                     
+  const firstDataRowIdx = 4;                     // 0-indexed row for first data row (row 5 in 1-indexed)
   const lastDataRowIdx = firstDataRowIdx + rows.length - 1;
   const footerLabelRowIdx = lastDataRowIdx + 1;
-  const footerBoxEndRowIdx = footerLabelRowIdx + 3; 
+  const footerBoxEndRowIdx = footerLabelRowIdx + 3; // label row + 3 more rows
   const totalRows = footerBoxEndRowIdx + 1;
 
   const aoa = Array.from({length: totalRows}, ()=> new Array(9).fill(''));
@@ -1840,7 +1856,16 @@ function buildWorkbook(sheet){
 }
 
 /* ============================================================
-   GOOGLE DRIVE
+   GOOGLE DRIVE 저장
+   - 엑셀(.xlsx) 다운로드 파일을 구글드라이브의 "기기가동기록서"
+     폴더에 자동 업로드합니다.
+   - 사용 전 준비물: Google Cloud Console에서 OAuth 클라이언트 ID(웹
+     애플리케이션)를 발급받아 아래 GOOGLE_CLIENT_ID 값에 넣어주세요.
+     "승인된 자바스크립트 원본(Authorized JavaScript origins)"에는
+     이 페이지를 여는 실제 주소(예: https://your-domain.com 또는
+     http://localhost:포트번호)를 등록해야 합니다.
+     ※ 파일을 그냥 더블클릭해서 여는 file:// 방식에서는 구글 로그인이
+        동작하지 않습니다. 반드시 http(s) 서버로 열어야 합니다.
 ============================================================ */
 const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -1861,7 +1886,7 @@ function getGDriveClient(){
     gdriveTokenClientObj = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: GDRIVE_SCOPE,
-      callback: ()=>{}, 
+      callback: ()=>{}, // 매 호출마다 아래에서 덮어씀
     });
   }
   return gdriveTokenClientObj;
@@ -1981,6 +2006,8 @@ window.addEventListener('beforeunload', ()=>{
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: mySessionId }),
       });
+    } else {
+      deleteGlobalSession();
     }
   }
 });
