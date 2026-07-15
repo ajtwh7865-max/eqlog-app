@@ -1382,6 +1382,7 @@ function renderLedger(){
         <div class="info-cell" style="flex:1"><span class="lbl">품 목 명</span><span class="val">${escapeHtml(s.product)||'-'}</span></div>
         <div class="info-cell" style="flex:1"><span class="lbl">기 기 명</span><span class="val">${escapeHtml(s.device)||'-'}</span></div>
         <div class="info-cell" style="flex:1.2">
+          <span class="lbl">설치장소</span>
           <input type="text" class="loc-input" id="sheet-location-input"
                  value="${escapeHtml(s.location)||''}"
                  placeholder="설치장소 입력" ${isEditBlocked()?'readonly':''}>
