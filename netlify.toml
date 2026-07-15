@@ -1,0 +1,24 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# 더 구체적인 경로부터 위에 배치해야 합니다 (heartbeat가 global-session보다 먼저)
+[[redirects]]
+  from = "/api/global-session/heartbeat"
+  to = "/.netlify/functions/global-session-heartbeat"
+  status = 200
+
+[[redirects]]
+  from = "/api/global-session"
+  to = "/.netlify/functions/global-session"
+  status = 200
+
+[[redirects]]
+  from = "/api/kv/*"
+  to = "/.netlify/functions/kv"
+  status = 200
+
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200

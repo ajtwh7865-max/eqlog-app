@@ -1,0 +1,9 @@
+{
+  "name": "eqlog-netlify-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "기기가동 기록서 웹앱 - Netlify Functions + Google Sheets 백엔드",
+  "dependencies": {
+    "googleapis": "^126.0.1"
+  }
+}
