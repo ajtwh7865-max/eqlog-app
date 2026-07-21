@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
@@ -273,6 +274,19 @@
   }
   .record-item .ri-del:hover{color:var(--danger);}
   .empty-note{font-size:12px;color:#6d747a;padding:10px 2px;line-height:1.6;}
+  .record-group{display:flex;flex-direction:column;gap:6px;}
+  .record-group-header{
+    font-size:11px;
+    letter-spacing:.08em;
+    color:var(--amber);
+    font-weight:600;
+    text-transform:uppercase;
+    padding:8px 2px 2px 2px;
+    border-top:1px solid var(--steel-line);
+    margin-top:2px;
+  }
+  .record-group:first-child .record-group-header{border-top:none;margin-top:0;padding-top:0;}
+  .record-group-header .rg-count{color:#8f9599;font-weight:500;text-transform:none;letter-spacing:0;margin-left:4px;}
 
   .sidebar-foot{margin-top:auto;font-size:11px;color:#6d747a;line-height:1.6;border-top:1px solid var(--steel-line);padding-top:12px;}
 
@@ -451,6 +465,19 @@
   }
   table.grid td.col-date input, table.grid td.col-time input{font-family:'Roboto Mono',monospace;}
   table.grid td.col-time input{text-align:center;}
+  td.col-mfg{padding:0;}
+  .mfg-wrap{display:flex;flex-direction:column;}
+  .mfg-wrap select.mfg-select{
+    width:100%;border:none;background:transparent;
+    padding:5px 6px 2px 6px;font-size:11.5px;color:var(--ink-soft);outline:none;
+    font-family:'Noto Sans KR',sans-serif;border-bottom:1px dashed var(--paper-line);
+  }
+  .mfg-wrap input.mfg-num{
+    width:100%;border:none;background:transparent;
+    padding:4px 6px 6px 6px;font-size:13px;color:var(--ink);outline:none;
+    font-family:'Roboto Mono',monospace;
+  }
+  .mfg-wrap select.mfg-select:focus, .mfg-wrap input.mfg-num:focus{background:rgba(226,161,58,.16);}
   td.col-del{text-align:center;width:34px;}
   td.col-del button{
     border:none;background:none;color:#a68f6a;cursor:pointer;font-size:16px;
@@ -669,6 +696,8 @@
         <div id="sel-location-fixed" class="wide tb-fixed-display is-empty" data-placeholder="기기 선택 시 자동">기기 선택 시 자동</div>
       </div>
       <button class="btn btn-teal" id="load-btn">불러오기 / 새 기록</button>
+      <button class="btn btn-primary" id="save-btn" style="display:none;">저장하기</button>
+      <button class="btn btn-ghost" id="prev-month-save-btn">💾 선택한 월 저장 후 삭제</button>
       <div class="tb-spacer"></div>
       <span class="status-chip" id="status-chip">기록을 불러오세요</span>
       <span class="mode-badge" id="mode-badge"></span>
@@ -681,7 +710,7 @@
     <div class="bottom-bar" id="bottom-actions" style="display:none;">
       <button class="btn btn-ghost" id="download-btn">📥 엑셀(.xlsx) 다운로드</button>
       <button class="btn btn-ghost" id="gdrive-btn">☁️ 구글드라이브 저장</button>
-      <button class="btn btn-primary" id="save-btn">저장하기</button>
+      <button class="btn btn-ghost" id="next-month-btn">📅 다음달 기기가동 생성</button>
     </div>
   </main>
 </div>
@@ -700,7 +729,7 @@ let currentSheet = null;  // currently loaded/editing sheet object
 let currentSheetId = null;
 let isDirty = false;
 let isEditingExisting = false;   // true if this sheet already existed in storage when opened
-let rowSnapshotMap = new Map();  // rowObj -> JSON string at last load/save, to detect which specific rows changed
+let rowSnapshotMap = new Map();  // rowObj -> rowSignature string at last load/save, to detect which specific rows changed
 
 // ---- 동시 로그인 허용 (제한 없음) ----
 let mySessionId = null;
@@ -714,7 +743,10 @@ const GLOBAL_SESSION_KEY = 'global-session';
 let isReadOnly = false;
 let readOnlyRecheckTimer = null;
 
-const DAYS_MIN_ROWS = 25;
+const DAYS_MIN_ROWS = 20;
+// 위에서 5개 행을 줄인 만큼, 남은 데이터 행 높이를 균등하게 늘려서
+// 표 전체 높이(기존 25행 x 17.25pt)는 그대로 유지되도록 계산
+const DATA_ROW_HEIGHT = (17.25 * 25 / DAYS_MIN_ROWS).toFixed(2);
 
 /* ============================================================
    HELPERS
@@ -741,20 +773,59 @@ const LOCATION_CODES = [
 
 // 품목명 -> 해당 품목에서 사용하는 기기명 목록
 const PRODUCT_DEVICE_MAP = {
+  'O0711A6RE': ['RS-201','NF-102','VD-101'],
   'O0711RE': ['RS-201','NF-102','VD-101'],
+  'G0720A6RE': ['RS-205','NF-105','VD-202'],
   'G0720RE': ['RS-205','NF-105','VD-202'],
+  'O0830A6RE': ['RS-202','NF-103','VD-104'],
   'O0830RE': ['RS-202','NF-103','VD-104'],
   'O0731RE': ['RG-205','NF-101','VD-103'],
+  'O0731A6RE': ['RG-205','NF-101','VD-103'],
+  'LX0566A6RE': ['RS-301','NF-201','VD-201'],
   'LX0566RE': ['RS-301','NF-201','VD-201'],
+  'LX0556A6RE': ['RS-204','NF-106','VD-105'],
   'LX0556RE': ['RS-204','NF-106','VD-105'],
-  'O0330RE': ['RS-302','RG-203','NF-104','VD-102']
+  'O0330A6RE': ['RS-302','RG-203','NF-104','VD-102'],
+  'O0330RE': ['RS-302','RG-203','NF-104','VD-102'],
+  // 아래 4개는 기존 품목과 동일한 기기(반응기/여과기/건조기)를 사용하는 별도 품목명
+  'GP-A079RE': ['RS-201','NF-102','VD-101'],       // O0711A6RE와 동일 기기
+  'HTM-K940RE': ['RS-202','NF-103','VD-104'],      // O0830A6RE와 동일 기기
+  'LHT-6634RE': ['RG-205','NF-101','VD-103'],      // O0731RE와 동일 기기
+  'C383RE': ['RS-302','RG-203','NF-104','VD-102']  // O0330A6RE와 동일 기기
 };
 const PRODUCT_CODES = Object.keys(PRODUCT_DEVICE_MAP);
 
-// 기기명 -> 품목명 역참조 (제조번호 접두어 자동 기입에 사용)
-const DEVICE_TO_PRODUCT = {};
-Object.entries(PRODUCT_DEVICE_MAP).forEach(([product, devices])=>{
-  devices.forEach(dv => { DEVICE_TO_PRODUCT[dv] = product; });
+// 품목명(sel-product) 드롭다운에는 아래 7가지 대표 코드만 표시
+// (RE/A6RE 등 세부 제조번호 코드는 각 대표 코드에 속한 그룹으로 묶어서
+//  제조번호 입력 시에만 선택할 수 있도록 함)
+const BASE_PRODUCTS = ['G0720','O0830','LX0566','LX0556','O0711','O0731','O0330'];
+
+// 대표 품목명 -> 실제 제조번호에 쓰이는 세부 품목코드 목록
+const BASE_TO_CODES = {
+  'O0711': ['O0711A6RE','O0711RE','GP-A079RE'],
+  'G0720': ['G0720A6RE','G0720RE'],
+  'O0830': ['O0830A6RE','O0830RE','HTM-K940RE'],
+  'O0731': ['O0731RE','O0731A6RE','LHT-6634RE'],
+  'LX0566': ['LX0566A6RE','LX0566RE'],
+  'LX0556': ['LX0556A6RE','LX0556RE'],
+  'O0330': ['O0330A6RE','O0330RE','C383RE']
+};
+
+// 대표 품목명 -> 사용하는 기기명 목록(반응기/여과기/건조기)
+const BASE_TO_DEVICES = {
+  'O0711': ['RS-201','NF-102','VD-101'],
+  'G0720': ['RS-205','NF-105','VD-202'],
+  'O0830': ['RS-202','NF-103','VD-104'],
+  'O0731': ['RG-205','NF-101','VD-103'],
+  'LX0566': ['RS-301','NF-201','VD-201'],
+  'LX0556': ['RS-204','NF-106','VD-105'],
+  'O0330': ['RS-302','RG-203','NF-104','VD-102']
+};
+
+// 기기명 -> 대표 품목명 역참조
+const DEVICE_TO_BASE_PRODUCT = {};
+Object.entries(BASE_TO_DEVICES).forEach(([base, devices])=>{
+  devices.forEach(dv => { DEVICE_TO_BASE_PRODUCT[dv] = base; });
 });
 
 // 기기명 -> 설치장소 고정값 (수정 불가, 기기 선택 시 자동 입력)
@@ -791,8 +862,8 @@ function processesForDevice(device){
 
 const WORKER_CODES = ['ajtwh7481','psw','khd4323','leel119'];
 const MANAGER_CODES = ['leel119','khd4323']; // 담당자: 김봉수, 김희두
-const APPROVER_CODES = ['leel119','khd4323']; // 승인자: 김봉수, 김희두
-const CHECKER_CODES = ['ccs']; // 확인자(표 내 서명): 최창식
+const APPROVER_CODES = ['ccs']; // 승인자: 최창식
+const CHECKER_CODES = []; // 확인자(표 내 서명): 없음 (최창식은 승인자 서명만 가능)
 
 function canSelectManager(){
   return !!currentUser && MANAGER_CODES.includes(currentUser);
@@ -818,6 +889,15 @@ function displayName(code){
 
 function blankRow(){
   return { date:'', timeStart:'', timeEnd:'', mfgNo:'', process:'', worker:'', checker:'', note:'' };
+}
+
+// 행이 실제로 바뀌었는지 비교하기 위한 "정규화된 서명" 문자열.
+// 화면에 보이는 8개 필드만, 항상 같은 순서로 뽑아서 비교한다.
+// (예전 데이터에 남아있는 'time' 같은 숨은 필드나, 속성이 저장/로드되는
+//  순서 차이 때문에 실제로는 안 바뀐 행이 "수정됨"으로 잘못 잡히는 것을 방지)
+const ROW_COMPARE_FIELDS = ['date','timeStart','timeEnd','mfgNo','process','worker','checker','note'];
+function rowSignature(r){
+  return ROW_COMPARE_FIELDS.map(f => JSON.stringify(r[f] || '')).join('|');
 }
 
 function sanitize(str){
@@ -987,6 +1067,51 @@ async function saveUsers(list){
 async function loadSheetIndex(){
   const r = await stGet('sheet-index', true);
   try{ sheetIndex = r ? JSON.parse(r.value) : []; }catch(e){ sheetIndex = []; }
+
+  let changed = false;
+
+  // 구버전 데이터 호환: 품목코드(product)가 비어있는 기록은 기기명으로
+  // 대표 품목코드를 역추적해 자동으로 채워준다 (사이드바 "품목코드 미지정" 방지)
+  sheetIndex.forEach(s=>{
+    if(!s.product && s.device && DEVICE_TO_BASE_PRODUCT[s.device]){
+      s.product = DEVICE_TO_BASE_PRODUCT[s.device];
+      changed = true;
+    }
+  });
+
+  // 정리 1: 정식 7가지 품목코드(BASE_PRODUCTS)에 속하지 않는 기록은 삭제
+  //         (신규 기록 생성 시엔 항상 이 7개 중에서만 선택 가능하므로, 여기 걸리는
+  //          항목은 예전 오류/테스트 데이터로 간주해 제거한다)
+  const invalidIds = sheetIndex.filter(s=>!BASE_PRODUCTS.includes(s.product)).map(s=>s.id);
+  if(invalidIds.length){
+    for(const id of invalidIds){ await deleteSheetById(id); }
+    sheetIndex = sheetIndex.filter(s=>!invalidIds.includes(s.id));
+    changed = true;
+  }
+
+  // 정리 2: 같은 연/월/기기 조합이 중복 저장되어 있으면, 가장 최근에 수정된
+  //         기록만 남기고 나머지는 삭제 (기기 위치값이 나중에 바뀌어 같은
+  //         연월/기기인데 id가 달라지는 경우 등을 대비)
+  const byKey = new Map();
+  sheetIndex.forEach(s=>{
+    const key = `${s.year}-${s.month}__${s.device}`;
+    if(!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(s);
+  });
+  const dupIds = [];
+  byKey.forEach(list=>{
+    if(list.length > 1){
+      list.sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+      list.slice(1).forEach(s=>dupIds.push(s.id));
+    }
+  });
+  if(dupIds.length){
+    for(const id of dupIds){ await deleteSheetById(id); }
+    sheetIndex = sheetIndex.filter(s=>!dupIds.includes(s.id));
+    changed = true;
+  }
+
+  if(changed) await saveSheetIndex();
 }
 async function saveSheetIndex(){
   await stSet('sheet-index', JSON.stringify(sheetIndex), true);
@@ -1218,19 +1343,13 @@ function locationForDevice(device){
   return DEVICE_LOCATION_MAP[device] || '';
 }
 
-// 현재 기록서의 기기명(반응기/여과기/건조기)을 기반으로 제조번호 접두어를 만듦 -> "LX0566RE-"
-function mfgPrefix(){
-  if(!currentSheet) return '';
-  const product = DEVICE_TO_PRODUCT[currentSheet.device] || currentSheet.product;
-  return product ? `${product}-` : '';
-}
-
+// 대표 품목명(7종) 기준으로 기기명 드롭다운을 채움
 function populateDeviceLocation(){
   const pSel = document.getElementById('sel-product');
   const dSel = document.getElementById('sel-device');
 
   pSel.innerHTML = '<option value="">품목명 선택 (전체)</option>' +
-    PRODUCT_CODES.map(c=>`<option value="${c}">${c}</option>`).join('');
+    BASE_PRODUCTS.map(c=>`<option value="${c}">${c}</option>`).join('');
 
   fillDeviceOptions('');
 
@@ -1262,8 +1381,8 @@ function applyDeviceLocation(){
 
 function fillDeviceOptions(productCode){
   const dSel = document.getElementById('sel-device');
-  const list = productCode && PRODUCT_DEVICE_MAP[productCode]
-    ? PRODUCT_DEVICE_MAP[productCode]
+  const list = productCode && BASE_TO_DEVICES[productCode]
+    ? BASE_TO_DEVICES[productCode]
     : DEVICE_CODES;
   const prevValue = dSel.value;
   dSel.innerHTML = '<option value="">기기명 선택</option>' +
@@ -1307,15 +1426,43 @@ function renderRecordList(filter){
     list.innerHTML = `<div class="empty-note">저장된 기록이 없습니다. 상단에서 년/월과 기기 정보를 입력하고 "불러오기 / 새 기록"을 눌러 시작하세요.</div>`;
     return;
   }
-  list.innerHTML = items.map(s=>`
-    <div class="record-item ${s.id===currentSheetId?'active':''}" data-id="${s.id}">
-      <div class="ri-main">
-        <b>${escapeHtml(s.device)||'(기기명 미입력)'}</b>
-        <span>${s.year}년 ${s.month}월 · ${escapeHtml(s.product)? escapeHtml(s.product)+' · ':''}${escapeHtml(s.location)||'-'}</span>
-      </div>
-      <button class="ri-del" data-del="${s.id}" title="삭제">✕</button>
-    </div>
-  `).join('');
+
+  // 품목코드(카테고리)별로 묶기 - BASE_PRODUCTS 순서대로 먼저, 그 외 코드는 뒤에, 미지정은 맨 뒤
+  const groupsMap = new Map();
+  items.forEach(s=>{
+    const key = s.product || '';
+    if(!groupsMap.has(key)) groupsMap.set(key, []);
+    groupsMap.get(key).push(s);
+  });
+  const knownOrder = BASE_PRODUCTS.filter(c=>groupsMap.has(c));
+  const otherOrder = [...groupsMap.keys()].filter(c=>c && !BASE_PRODUCTS.includes(c)).sort();
+  const orderedKeys = [...knownOrder, ...otherOrder, ...(groupsMap.has('')?['']:[])];
+
+  list.innerHTML = orderedKeys.map(key=>{
+    // 그룹 내부는 대표 품목의 기기 순서(반응기 → 여과기 → 건조기, BASE_TO_DEVICES 순서)대로 정렬하고,
+    // 같은 기기 안에서는 최근 수정된 기록이 위로 오도록 함
+    const deviceOrder = BASE_TO_DEVICES[key] || [];
+    const groupItems = groupsMap.get(key).slice().sort((a,b)=>{
+      let ai = deviceOrder.indexOf(a.device); if(ai===-1) ai = deviceOrder.length;
+      let bi = deviceOrder.indexOf(b.device); if(bi===-1) bi = deviceOrder.length;
+      if(ai !== bi) return ai - bi;
+      return (b.updatedAt||'').localeCompare(a.updatedAt||'');
+    });
+    const label = key ? escapeHtml(key) : '품목코드 미지정';
+    return `
+    <div class="record-group">
+      <div class="record-group-header">${label}<span class="rg-count">${groupItems.length}건</span></div>
+      ${groupItems.map(s=>`
+        <div class="record-item ${s.id===currentSheetId?'active':''}" data-id="${s.id}">
+          <div class="ri-main">
+            <b>${escapeHtml(s.device)||'(기기명 미입력)'}</b>
+            <span>${s.year}년 ${s.month}월 · ${escapeHtml(s.location)||'-'}</span>
+          </div>
+          <button class="ri-del" data-del="${s.id}" title="삭제">✕</button>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
 
   list.querySelectorAll('.record-item').forEach(el=>{
     el.addEventListener('click', (e)=>{
@@ -1328,11 +1475,9 @@ function renderRecordList(filter){
       e.stopPropagation();
       if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
       const id = btn.dataset.del;
-      if(id===currentSheetId && isSheetReadOnly){ toast(`${displayName(sheetLockedByUser)}님이 편집 중인 기록은 삭제할 수 없습니다.`, true); return; }
       const meta = sheetIndex.find(s=>s.id===id);
       if(!confirm(`"${meta.device} / ${meta.year}년 ${meta.month}월" 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return;
       await deleteSheetById(id);
-      await deleteSheetLock(id);
       sheetIndex = sheetIndex.filter(s=>s.id!==id);
       await saveSheetIndex();
       if(currentSheetId===id){
@@ -1341,6 +1486,7 @@ function renderRecordList(filter){
         currentSheetId = null;
         document.getElementById('ledger-area').innerHTML='';
         document.getElementById('bottom-actions').style.display='none';
+        document.getElementById('save-btn').style.display='none';
         document.getElementById('sheet-lock-banner').style.display='none';
         document.getElementById('status-chip').textContent='기록을 불러오세요';
         document.getElementById('status-chip').className='status-chip';
@@ -1398,11 +1544,31 @@ async function openSheet(id, metaIfNew){
       updatedAt: new Date().toISOString()
     };
   }
+  // 구버전 데이터 호환: 품목코드(product)가 비어있으면 기기명으로 대표 품목코드를 역추적해 채워준다
+  if(!data.product && data.device && DEVICE_TO_BASE_PRODUCT[data.device]){
+    data.product = DEVICE_TO_BASE_PRODUCT[data.device];
+    const idxMeta = sheetIndex.find(s=>s.id===id);
+    if(idxMeta && !idxMeta.product){
+      idxMeta.product = data.product;
+      saveSheetIndex();
+    }
+  }
   currentSheet = data;
   currentSheetId = id;
+  // 구버전 데이터 호환: 'time' 필드를 timeStart/timeEnd로 미리 분리해둔다.
+  // (이 작업을 렌더링 시점(createRowEl)에서 하면, 스냅샷을 찍은 뒤에 rowObj가
+  //  새로 바뀌어서 실제로 사용자가 손대지 않은 행까지 "수정됨"으로 잘못 인식되어
+  //  다른 행의 비고란에도 수정 사유가 함께 기록되는 오류가 있었음)
+  currentSheet.rows.forEach(r=>{
+    if(r.timeStart === undefined || r.timeEnd === undefined){
+      const legacy = (r.time || '').split(/[~\-]/);
+      r.timeStart = r.timeStart || (legacy[0] ? legacy[0].trim() : '');
+      r.timeEnd = r.timeEnd || (legacy[1] ? legacy[1].trim() : '');
+    }
+  });
   rowSnapshotMap = new Map();
   if(isEditingExisting){
-    currentSheet.rows.forEach(r => rowSnapshotMap.set(r, JSON.stringify(r)));
+    currentSheet.rows.forEach(r => rowSnapshotMap.set(r, rowSignature(r)));
   }
 
   document.getElementById('sel-year').value = data.year;
@@ -1417,6 +1583,7 @@ async function openSheet(id, metaIfNew){
 
   renderLedger();
   document.getElementById('bottom-actions').style.display='flex';
+  document.getElementById('save-btn').style.display='inline-flex';
   setDirty(false);
   renderRecordList(document.getElementById('record-search-input').value);
 }
@@ -1482,7 +1649,7 @@ function renderLedger(){
         <div class="footer-cell">
           <div class="footer-label">승인자</div>
           <div class="sign-box">
-            <select id="footer-approver" class="sign-select" ${(!canSelectApprover() || isEditBlocked()) ? 'disabled' : ''}>
+            <select id="footer-approver" class="sign-select" ${(!canSelectApprover() || isEditBlocked() || !s.manager) ? 'disabled' : ''}>
               <option value="">선택</option>
               ${APPROVER_CODES.map(c=>`<option value="${c}" ${s.approver===c?'selected':''}>${displayName(c)}</option>`).join('')}
             </select>
@@ -1531,10 +1698,24 @@ function renderLedger(){
     s.manager = e.target.value;
     setDirty(true);
     refreshStamp('footer-manager', s.manager);
+    // 담당자 확인 여부에 따라 승인자 select 잠금/해제
+    if(!isEditBlocked() && canSelectApprover()){
+      footerApproverEl.disabled = !s.manager;
+    }
+    if(!s.manager && s.approver){
+      s.approver = '';
+      footerApproverEl.value = '';
+      refreshStamp('footer-approver', '');
+    }
   });
   footerApproverEl.addEventListener('change', (e)=>{
+    if(!s.manager){
+      toast('담당자(김봉수·김희두) 확인 후에 승인자를 선택할 수 있습니다.', true);
+      footerApproverEl.value = s.approver || '';
+      return;
+    }
     if(!canSelectApprover()){
-      toast('승인자는 김봉수·김희두 계정으로 로그인해야 선택할 수 있습니다.', true);
+      toast('승인자는 최창식 계정으로 로그인해야 선택할 수 있습니다.', true);
       footerApproverEl.value = s.approver || '';
       return;
     }
@@ -1570,7 +1751,7 @@ function refreshStamp(inputId, value){
    WORKER / CHECKER SIGN CELLS
    - 작업자는 로그인한 본인 계정으로만 서명 가능 (아이디 저장, 화면엔 이름 표시)
    - 확인자는 작업자 서명이 먼저 있어야 하고, 작업자와 다른 계정이면서
-     CHECKER_CODES(최창식)로 로그인해야만 서명 버튼이 활성화됨
+     CHECKER_CODES로 로그인해야만 서명 버튼이 활성화됨 (최창식은 승인자 전용이라 현재 CHECKER_CODES는 비어있음)
 ============================================================ */
 function renderWorkerCell(td, rowObj, checkerTd){
   td.innerHTML = '';
@@ -1680,7 +1861,7 @@ function renderCheckerCell(td, rowObj, workerTd){
   if(!canSelectChecker()){
     const note = document.createElement('span');
     note.className = 'sign-note';
-    note.textContent = '확인자는 최창식 계정으로 로그인해야 서명할 수 있습니다.';
+    note.textContent = '확인자로 서명 가능한 계정이 없습니다.';
     td.appendChild(note);
     return;
   }
@@ -1700,12 +1881,6 @@ function renderCheckerCell(td, rowObj, workerTd){
 
 function createRowEl(rowObj){
   const tr = document.createElement('tr');
-  // 구버전 데이터 호환: 기존 'time' 필드(예: 09:00~18:00)가 있으면 시작/종료로 분리
-  if(rowObj.timeStart === undefined || rowObj.timeEnd === undefined){
-    const legacy = (rowObj.time || '').split(/[~\-]/);
-    rowObj.timeStart = rowObj.timeStart || (legacy[0] ? legacy[0].trim() : '');
-    rowObj.timeEnd = rowObj.timeEnd || (legacy[1] ? legacy[1].trim() : '');
-  }
   const dateTd = document.createElement('td');
   dateTd.className = 'col-date';
   const dateInput = document.createElement('input');
@@ -1739,18 +1914,69 @@ function createRowEl(rowObj){
   endTd.appendChild(endInput);
   tr.appendChild(endTd);
 
-  // 제조번호: 품목명(예: LX0566RE)을 기반으로 "LX0566RE-" 접두어를 자동 기입
-  if(!rowObj.mfgNo && mfgPrefix()){
-    rowObj.mfgNo = mfgPrefix();
-  }
+  // 제조번호: 앞부분(품목코드)은 드롭다운으로 선택, 뒷부분(예: 260701)은 직접 입력
   const mfgTd = document.createElement('td');
-  const mfgInput = document.createElement('input');
-  mfgInput.type = 'text';
-  mfgInput.value = rowObj.mfgNo || '';
-  mfgInput.placeholder = '제조번호';
-  mfgInput.readOnly = isEditBlocked();
-  mfgInput.addEventListener('input', ()=>{ rowObj.mfgNo = mfgInput.value; setDirty(true); });
-  mfgTd.appendChild(mfgInput);
+  mfgTd.className = 'col-mfg';
+  const mfgWrap = document.createElement('div');
+  mfgWrap.className = 'mfg-wrap';
+
+  const mfgSelect = document.createElement('select');
+  mfgSelect.className = 'mfg-select';
+  mfgSelect.disabled = isEditBlocked();
+  const mfgEmptyOpt = document.createElement('option');
+  mfgEmptyOpt.value = '';
+  mfgEmptyOpt.textContent = '품목코드 선택';
+  mfgSelect.appendChild(mfgEmptyOpt);
+  // 현재 기록서의 품목명(대표 코드)과 같은 그룹(같은 기기를 쓰는 품목)만 표시
+  // 예: 품목명에서 O0830을 선택하면 제조번호 드롭다운에는
+  //     O0830RE / O0830A6RE / HTM-K940RE 만 나타남. 품목명이 지정되지 않은 경우 전체 표시.
+  const mfgCurrentProduct = currentSheet ? (currentSheet.product || DEVICE_TO_BASE_PRODUCT[currentSheet.device]) : '';
+  const mfgCodeList = (mfgCurrentProduct && BASE_TO_CODES[mfgCurrentProduct]) || PRODUCT_CODES;
+  mfgCodeList.forEach(code=>{
+    const opt = document.createElement('option');
+    opt.value = code;
+    opt.textContent = code;
+    mfgSelect.appendChild(opt);
+  });
+
+  const mfgNumInput = document.createElement('input');
+  mfgNumInput.type = 'text';
+  mfgNumInput.className = 'mfg-num';
+  mfgNumInput.placeholder = '번호 입력 (예: 260701)';
+  mfgNumInput.readOnly = isEditBlocked();
+
+  // 저장된 "품목코드-번호" 문자열을 드롭다운값 / 번호값으로 분리
+  function splitMfgNo(value){
+    value = value || '';
+    const match = PRODUCT_CODES.find(code => value === code || value.startsWith(code + '-'));
+    if(match){
+      return { code: match, rest: value.slice(match.length).replace(/^-/, '') };
+    }
+    return { code: '', rest: value };
+  }
+  const parsedMfg = splitMfgNo(rowObj.mfgNo);
+  // 코드가 목록에 없는 옛날 값이면 드롭다운에 임시 옵션으로 추가
+  if(parsedMfg.code && !PRODUCT_CODES.includes(parsedMfg.code)){
+    const opt = document.createElement('option');
+    opt.value = parsedMfg.code;
+    opt.textContent = parsedMfg.code;
+    mfgSelect.appendChild(opt);
+  }
+  mfgSelect.value = parsedMfg.code;
+  mfgNumInput.value = parsedMfg.rest;
+
+  function syncMfgNo(){
+    const code = mfgSelect.value;
+    const rest = mfgNumInput.value;
+    rowObj.mfgNo = code ? `${code}-${rest}` : rest;
+    setDirty(true);
+  }
+  mfgSelect.addEventListener('change', syncMfgNo);
+  mfgNumInput.addEventListener('input', syncMfgNo);
+
+  mfgWrap.appendChild(mfgSelect);
+  mfgWrap.appendChild(mfgNumInput);
+  mfgTd.appendChild(mfgWrap);
   tr.appendChild(mfgTd);
 
   // 작업공정: 기기별 선택 (RS/RG=정제, NF=여과, VD=건조 + CS)
@@ -1838,7 +2064,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   // 이미 저장된 기록에서 실제로 값이 바뀐 행이 있으면, 수정 사유를 받아 해당 행의 비고란에 기록
   if(isEditingExisting){
     const changedRows = currentSheet.rows.filter(r =>
-      rowSnapshotMap.has(r) && JSON.stringify(r) !== rowSnapshotMap.get(r)
+      rowSnapshotMap.has(r) && rowSignature(r) !== rowSnapshotMap.get(r)
     );
     if(changedRows.length > 0){
       const reason = prompt(`${changedRows.length}개 행이 수정되었습니다. 수정 사유를 입력해주세요. (해당 행의 비고란에 기록됩니다)`);
@@ -1878,7 +2104,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
     setDirty(false);
     isEditingExisting = true;
     rowSnapshotMap = new Map();
-    currentSheet.rows.forEach(r => rowSnapshotMap.set(r, JSON.stringify(r)));
+    currentSheet.rows.forEach(r => rowSnapshotMap.set(r, rowSignature(r)));
     renderRecordList(document.getElementById('record-search-input').value);
     toast('저장되었습니다.');
   }catch(e){
@@ -1887,14 +2113,14 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
 });
 
 /* ============================================================
-   EXCEL EXPORT (matches original template structure)
+   EXCEL EXPORT (원본 서식(테두리/폰트/정렬) 그대로 유지)
 ============================================================ */
-document.getElementById('download-btn').addEventListener('click', ()=>{
+document.getElementById('download-btn').addEventListener('click', async ()=>{
   if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
   try{
-    const wb = buildWorkbook(currentSheet);
+    const blob = await buildWorkbookBlob(currentSheet);
     const fname = `기기가동기록서_${sanitize(currentSheet.device)||'기기'}_${currentSheet.year}${String(currentSheet.month).padStart(2,'0')}.xlsx`;
-    XLSX.writeFile(wb, fname);
+    downloadBlob(blob, fname);
     toast('엑셀 파일이 다운로드되었습니다.');
   }catch(e){
     console.error(e);
@@ -1902,74 +2128,193 @@ document.getElementById('download-btn').addEventListener('click', ()=>{
   }
 });
 
-function buildWorkbook(sheet){
+/* ============================================================
+   원본 서식 그대로 유지되는 엑셀 파일 생성
+   - 업로드된 원본 "기기가동_기록서.xlsx" 파일을 템플릿으로 삼아
+     테두리/폰트/정렬 등 서식은 그대로 두고 값만 채워 넣습니다.
+============================================================ */
+const TEMPLATE_XLSX_BASE64 = "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";
+
+function base64ToUint8Array(base64){
+  const binStr = atob(base64);
+  const bytes = new Uint8Array(binStr.length);
+  for(let i=0;i<binStr.length;i++) bytes[i] = binStr.charCodeAt(i);
+  return bytes;
+}
+
+function xmlEscape(str){
+  return String(str==null?'':str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+// 값이 있으면 inlineStr로 채우고, 없으면 스타일만 유지한 빈 셀을 만든다
+function xCell(ref, style, value){
+  const v = (value===undefined || value===null) ? '' : String(value);
+  if(v === '') return `<c r="${ref}" s="${style}"/>`;
+  return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(v)}</t></is></c>`;
+}
+
+const COL_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
+
+function buildSheetXml(sheet){
   const rows = sheet.rows.length >= DAYS_MIN_ROWS
     ? sheet.rows
     : [...sheet.rows, ...Array.from({length: DAYS_MIN_ROWS - sheet.rows.length}, blankRow)];
 
-  const firstDataRowIdx = 4;                     // 0-indexed row for first data row (row 5 in 1-indexed)
-  const lastDataRowIdx = firstDataRowIdx + rows.length - 1;
-  const footerLabelRowIdx = lastDataRowIdx + 1;
-  const footerBoxEndRowIdx = footerLabelRowIdx + 3; // label row + 3 more rows
-  const totalRows = footerBoxEndRowIdx + 1;
+  const dataStartRow = 5;                       // 1-indexed, 첫 데이터 행
+  const dataEndRow = dataStartRow + rows.length - 1;
+  const footerLabelRow = dataEndRow + 1;
+  const footerEndRow = footerLabelRow + 1;       // 비고/담당자/승인자 박스 (2행)
+  const infoRow = footerEndRow + 1;              // ISO 문서번호 / 페이지 표시 행
+  const totalRows = infoRow;
 
-  const aoa = Array.from({length: totalRows}, ()=> new Array(9).fill(''));
+  const deviceText = sheet.device || '';
 
-  aoa[0][0] = '기기가동 기록서';
-  aoa[1][0] = `${sheet.year||''}년  ${sheet.month||''}월`;
-  aoa[2][0] = '기 기 명';
-  aoa[2][2] = sheet.device ? (sheet.product ? `${sheet.device} (${sheet.product})` : sheet.device) : '';
-  aoa[2][4] = '설치장소';
-  aoa[2][5] = sheet.location || '';
-  aoa[3] = ['날짜','사용시간','','제조번호','','작업공정','작업자','확인자','비고'];
+  const rowsXml = [];
 
+  // 1행: 제목
+  rowsXml.push(`<row r="1" spans="1:13" ht="24.95" customHeight="1" x14ac:dyDescent="0.3">`
+    + xCell('A1','7','기기가동기록서')
+    + COL_LETTERS.slice(1).map(c=>xCell(`${c}1`,'7','')).join('')
+    + `</row>`);
+
+  // 2행: 년/월
+  rowsXml.push(`<row r="2" spans="1:13" s="11" customFormat="1" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
+    + xCell('A2','15', `${sheet.year||''}년 ${sheet.month ? String(sheet.month).padStart(2,'0') : ''}월`)
+    + COL_LETTERS.slice(1,-1).map(c=>xCell(`${c}2`,'16','')).join('')
+    + xCell('M2','17','')
+    + `</row>`);
+
+  // 3행: 기기명 / 설치장소
+  rowsXml.push(`<row r="3" spans="1:13" s="11" customFormat="1" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
+    + xCell('A3','18', `기기명 ${deviceText}`)
+    + xCell('B3','18','') + xCell('C3','18','') + xCell('D3','18','') + xCell('E3','18','')
+    + xCell('F3','18','설치장소')
+    + xCell('G3','18','') + xCell('H3','18','') + xCell('I3','18','')
+    + xCell('J3','18', sheet.location || '')
+    + xCell('K3','18','') + xCell('L3','18','') + xCell('M3','18','')
+    + `</row>`);
+
+  // 4행: 표 머리글
+  rowsXml.push(`<row r="4" spans="1:13" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
+    + xCell('A4','3','날짜')
+    + xCell('B4','3','사용시간')
+    + xCell('C4','2','제조번호')
+    + xCell('D4','2','')
+    + xCell('E4','3','작업공정')
+    + xCell('F4','3','작업자')
+    + xCell('G4','3','확인자')
+    + xCell('H4','4','비고')
+    + xCell('I4','5','') + xCell('J4','5','') + xCell('K4','5','') + xCell('L4','5','')
+    + xCell('M4','6','')
+    + `</row>`);
+
+  // 데이터 행
   rows.forEach((r, i)=>{
-    const ri = firstDataRowIdx + i;
-    aoa[ri][0] = r.date || '';
-    aoa[ri][1] = r.timeStart || r.timeEnd ? `${r.timeStart||''}${(r.timeStart&&r.timeEnd)?'~':''}${r.timeEnd||''}` : '';
-    aoa[ri][3] = r.mfgNo || '';
-    aoa[ri][5] = r.process || '';
-    aoa[ri][6] = r.worker ? displayName(r.worker) : '';
-    aoa[ri][7] = r.checker ? displayName(r.checker) : '';
-    aoa[ri][8] = r.note || '';
+    const rn = dataStartRow + i;
+    const timeRange = (r.timeStart || r.timeEnd)
+      ? `${r.timeStart||''}${(r.timeStart&&r.timeEnd)?'~':''}${r.timeEnd||''}`
+      : '';
+    rowsXml.push(`<row r="${rn}" spans="1:13" ht="${DATA_ROW_HEIGHT}" customHeight="1" x14ac:dyDescent="0.3">`
+      + xCell(`A${rn}`,'2', r.date || '')
+      + xCell(`B${rn}`,'13', timeRange)
+      + xCell(`C${rn}`,'13', r.mfgNo || '')
+      + xCell(`D${rn}`,'13','')
+      + xCell(`E${rn}`,'13', r.process || '')
+      + xCell(`F${rn}`,'13', r.worker ? displayName(r.worker) : '')
+      + xCell(`G${rn}`,'13', r.checker ? displayName(r.checker) : '')
+      + xCell(`H${rn}`,'13', r.note || '')
+      + xCell(`I${rn}`,'13','') + xCell(`J${rn}`,'13','') + xCell(`K${rn}`,'13','')
+      + xCell(`L${rn}`,'13','') + xCell(`M${rn}`,'13','')
+      + `</row>`);
   });
 
-  aoa[footerLabelRowIdx][0] = sheet.footerNote ? ` 비 고 : ${sheet.footerNote}` : ' 비 고';
-  aoa[footerLabelRowIdx][5] = '담당자';
-  aoa[footerLabelRowIdx][7] = '승인자';
-  aoa[footerLabelRowIdx+1][5] = sheet.manager ? displayName(sheet.manager) : '';
-  aoa[footerLabelRowIdx+1][7] = sheet.approver ? displayName(sheet.approver) : '';
+  // 하단: 비고 / 담당자 / 승인자 (2행 병합)
+  const managerName = sheet.manager ? displayName(sheet.manager) : '';
+  const approverName = sheet.approver ? displayName(sheet.approver) : '';
+  rowsXml.push(`<row r="${footerLabelRow}" spans="1:13" x14ac:dyDescent="0.3">`
+    + xCell(`A${footerLabelRow}`,'2','비고')
+    + xCell(`B${footerLabelRow}`,'2', sheet.footerNote || '')
+    + xCell(`C${footerLabelRow}`,'2','') + xCell(`D${footerLabelRow}`,'2','')
+    + xCell(`E${footerLabelRow}`,'2','') + xCell(`F${footerLabelRow}`,'2','')
+    + xCell(`G${footerLabelRow}`,'2','')
+    + xCell(`H${footerLabelRow}`,'2','담당자')
+    + xCell(`I${footerLabelRow}`,'2', managerName)
+    + xCell(`J${footerLabelRow}`,'2','')
+    + xCell(`K${footerLabelRow}`,'2','승인자')
+    + xCell(`L${footerLabelRow}`,'2', approverName)
+    + xCell(`M${footerLabelRow}`,'2','')
+    + `</row>`);
+  rowsXml.push(`<row r="${footerEndRow}" spans="1:13" x14ac:dyDescent="0.3">`
+    + COL_LETTERS.map(c=>xCell(`${c}${footerEndRow}`,'2','')).join('')
+    + `</row>`);
+  rowsXml.push(`<row r="${infoRow}" spans="1:13" ht="18" customHeight="1" x14ac:dyDescent="0.3">`
+    + xCell(`A${infoRow}`,'14','ISO-FES-001-02')
+    + xCell(`B${infoRow}`,'14','') + xCell(`C${infoRow}`,'14','') + xCell(`D${infoRow}`,'14','')
+    + xCell(`E${infoRow}`,'14','') + xCell(`F${infoRow}`,'14','') + xCell(`G${infoRow}`,'14','')
+    + xCell(`H${infoRow}`,'14','') + xCell(`I${infoRow}`,'14','') + xCell(`J${infoRow}`,'14','')
+    + xCell(`K${infoRow}`,'14','') + xCell(`L${infoRow}`,'14','')
+    + xCell(`M${infoRow}`,'14','1 of 1')
+    + `</row>`);
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const merges = ['A1:M1','A2:M2','A3:E3','F3:I3','J3:M3','C4:D4','H4:M4'];
+  rows.forEach((r,i)=>{
+    const rn = dataStartRow + i;
+    merges.push(`C${rn}:D${rn}`, `H${rn}:M${rn}`);
+  });
+  merges.push(
+    `A${footerLabelRow}:A${footerEndRow}`,
+    `B${footerLabelRow}:G${footerEndRow}`,
+    `H${footerLabelRow}:H${footerEndRow}`,
+    `I${footerLabelRow}:J${footerEndRow}`,
+    `K${footerLabelRow}:K${footerEndRow}`,
+    `L${footerLabelRow}:M${footerEndRow}`,
+  );
 
-  const merges = [
-    {s:{r:0,c:0}, e:{r:0,c:8}},
-    {s:{r:1,c:0}, e:{r:1,c:8}},
-    {s:{r:2,c:0}, e:{r:2,c:1}},
-    {s:{r:2,c:2}, e:{r:2,c:3}},
-    {s:{r:2,c:5}, e:{r:2,c:8}},
-    {s:{r:3,c:1}, e:{r:3,c:2}},
-    {s:{r:3,c:3}, e:{r:3,c:4}},
-  ];
-  for(let i=0;i<rows.length;i++){
-    const ri = firstDataRowIdx + i;
-    merges.push({s:{r:ri,c:1}, e:{r:ri,c:2}});
-    merges.push({s:{r:ri,c:3}, e:{r:ri,c:4}});
-  }
-  merges.push({s:{r:footerLabelRowIdx,c:0}, e:{r:footerBoxEndRowIdx,c:4}});
-  merges.push({s:{r:footerLabelRowIdx,c:5}, e:{r:footerLabelRowIdx,c:6}});
-  merges.push({s:{r:footerLabelRowIdx,c:7}, e:{r:footerLabelRowIdx,c:8}});
-  merges.push({s:{r:footerLabelRowIdx+1,c:5}, e:{r:footerBoxEndRowIdx,c:6}});
-  merges.push({s:{r:footerLabelRowIdx+1,c:7}, e:{r:footerBoxEndRowIdx,c:8}});
-  ws['!merges'] = merges;
+  const mergeCellsXml = `<mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells>`;
 
-  ws['!cols'] = [
-    {wch:9},{wch:9},{wch:6},{wch:10},{wch:6},{wch:12},{wch:9},{wch:9},{wch:16}
-  ];
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac xr xr2 xr3" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision" xmlns:xr2="http://schemas.microsoft.com/office/spreadsheetml/2015/revision2" xmlns:xr3="http://schemas.microsoft.com/office/spreadsheetml/2016/revision3" xr:uid="{00000000-0001-0000-0000-000000000000}"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:M${totalRows}"/><sheetViews><sheetView tabSelected="1" view="pageBreakPreview" zoomScale="100" zoomScaleNormal="100" zoomScaleSheetLayoutView="100" workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="16.5" x14ac:dyDescent="0.3"/><cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="2" width="15" customWidth="1"/><col min="3" max="4" width="7.5" customWidth="1"/><col min="5" max="5" width="10" customWidth="1"/><col min="6" max="7" width="9" customWidth="1"/><col min="8" max="13" width="10" customWidth="1"/></cols><sheetData>${rowsXml.join('')}</sheetData>${mergeCellsXml}<phoneticPr fontId="1" type="noConversion"/><printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="1"/><headerFooter differentFirst="0" scaleWithDoc="1" alignWithMargins="1"></headerFooter></worksheet>`;
+}
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-  return wb;
+async function buildWorkbookBlob(sheet){
+  const zip = await JSZip.loadAsync(base64ToUint8Array(TEMPLATE_XLSX_BASE64));
+  // 제조번호처럼 칸보다 글자가 길어질 수 있는 셀은 칸을 벗어나지 않도록
+  // "셀에 맞게 줄임(shrinkToFit)" 스타일을 하나 추가한다 (styles.xml에 14번째 서식으로 삽입)
+  let stylesXml = await zip.file('xl/styles.xml').async('string');
+  stylesXml = stylesXml
+    .replace('<cellXfs count="13">', '<cellXfs count="19">')
+    .replace('</cellXfs>', '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="4" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs>');
+  zip.file('xl/styles.xml', stylesXml);
+
+  const sheetXml = buildSheetXml(sheet);
+  zip.file('xl/worksheets/sheet1.xml', sheetXml);
+  // 특정 프린터에 저장된 인쇄 설정(printerSettings1.bin)을 더 이상 참조하지 않으므로
+  // 함께 제거 - 그래야 어느 PC/프린터에서 열어도 위 pageSetup(A4, 폭 맞춤)이 그대로 적용됨
+  zip.remove('xl/printerSettings/printerSettings1.bin');
+  zip.file('xl/worksheets/_rels/sheet1.xml.rels',
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>');
+  // 문서 속성(작성자/마지막으로 수정한 사람)에 로그인 아이디(예: ajtwh7481)가 그대로
+  // 남지 않도록, 이름으로 변환해서 기록 (없으면 일반 이름으로 대체)
+  const authorName = (currentUser && displayName(currentUser)) || '기기가동기록서';
+  const nowIso = new Date().toISOString().replace(/\.\d+Z$/,'Z');
+  zip.file('docProps/core.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>${xmlEscape(authorName)}</dc:creator><cp:lastModifiedBy>${xmlEscape(authorName)}</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${nowIso}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${nowIso}</dcterms:modified></cp:coreProperties>`);
+  return zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
 }
 
 /* ============================================================
@@ -2092,9 +2437,7 @@ document.getElementById('gdrive-btn').addEventListener('click', async ()=>{
   btn.disabled = true;
   btn.textContent = '업로드 중...';
   try{
-    const wb = buildWorkbook(currentSheet);
-    const arrayBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([arrayBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const blob = await buildWorkbookBlob(currentSheet);
     const fname = `기기가동기록서_${sanitize(currentSheet.device)||'기기'}_${currentSheet.year}${String(currentSheet.month).padStart(2,'0')}.xlsx`;
     await uploadXlsxToDrive(blob, fname);
     toast('구글드라이브에 저장되었습니다. ("' + GDRIVE_FOLDER_NAME + '" 폴더 확인)');
@@ -2112,8 +2455,212 @@ document.getElementById('gdrive-btn').addEventListener('click', async ()=>{
 });
 
 /* ============================================================
-   INIT
+   다음달 기기가동 생성
+   - 정식 7가지 품목(BASE_PRODUCTS)에 속한 모든 기기에 대해,
+     "다음달"(오늘 날짜 기준) 빈 기록을 한 번에 만들어준다.
+   - 이미 같은 연/월/기기 조합의 기록이 있으면 건너뛴다(중복 생성 방지).
 ============================================================ */
+async function generateNextMonthSheets(){
+  const now = new Date();
+  let nextMonth = now.getMonth() + 2; // getMonth()는 0부터 시작하므로 +1(다음달) +1(0→1월 보정)
+  let nextYear = now.getFullYear();
+  if(nextMonth > 12){ nextMonth -= 12; nextYear += 1; }
+
+  const targets = [];
+  BASE_PRODUCTS.forEach(product=>{
+    (BASE_TO_DEVICES[product] || []).forEach(device=>{
+      targets.push({ product, device });
+    });
+  });
+
+  let created = 0, skipped = 0;
+  for(const t of targets){
+    const location = locationForDevice(t.device) || '';
+    const id = makeSheetId(nextYear, nextMonth, t.device, location);
+    if(sheetIndex.some(s=>s.id===id)){ skipped++; continue; }
+    const nowIso = new Date().toISOString();
+    const data = {
+      year: nextYear, month: nextMonth,
+      product: t.product, device: t.device, location: location,
+      rows: Array.from({length: DAYS_MIN_ROWS}, blankRow),
+      footerNote:'', manager:'', approver:'',
+      updatedAt: nowIso
+    };
+    await saveSheetById(id, data);
+    sheetIndex.push({
+      id, year: nextYear, month: nextMonth,
+      product: t.product, device: t.device, location: location,
+      updatedAt: nowIso
+    });
+    created++;
+  }
+  if(created > 0) await saveSheetIndex();
+  renderRecordList(document.getElementById('record-search-input').value);
+  toast(`${nextYear}년 ${nextMonth}월 기록 ${created}건 생성됨` + (skipped ? ` (이미 있던 ${skipped}건은 건너뜀)` : ''));
+}
+
+document.getElementById('next-month-btn').addEventListener('click', async ()=>{
+  if(isReadOnly){ toast('보기 전용 모드에서는 생성할 수 없습니다.', true); return; }
+  const btn = document.getElementById('next-month-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '생성 중...';
+  try{
+    await generateNextMonthSheets();
+  }catch(e){
+    console.error(e);
+    toast('다음달 기록 생성 중 오류가 발생했습니다. 다시 시도해주세요.', true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
+/* ============================================================
+   선택한 월 기록 일괄 저장(내보내기 + 삭제)
+   - 상단 툴바에서 사용자가 고른 "년도/월"에 대해, 정식 7가지 품목의
+     모든 기기를 대상으로 각각 엑셀(.xlsx)로 만들어 사용자가 직접 고른
+     폴더(예: 바탕화면)에 저장한다.
+   - 그 달에 실제로 작성된 기록이 있으면 그 내용 그대로, 아예 기록을
+     작성하지 않은 기기가 있으면(=기기가동 기록 자체를 안 한 경우) 빈
+     양식으로 만들어서 함께 저장한다. → 기록을 안 했다는 이유로 저장이
+     안 되던 문제를 해결.
+   - 저장 후, 실제로 작성되어 있던 기록만 이 앱의 저장소(불러오기 목록)
+     에서 삭제한다. (원래 기록이 없던 빈 양식은 애초에 목록에 없으므로
+     삭제 대상도 아니다.)
+   - 저장할 때 품목코드(G0720, O0830 등)별로 하위 폴더를 만들어 그 안에
+     같은 품목 파일들을 모아서 저장한다. (폴더 선택을 지원하지 않는
+     브라우저는 폴더 생성이 안 되므로 다운로드 폴더에 그대로 받는다.)
+     파일명은 "기기가동기록서_기기번호_연월"(예: 기기가동기록서_VD-101_202607.xlsx) 형식.
+   - 폴더 선택 창은 File System Access API(showDirectoryPicker)를 지원하는
+     브라우저(Chrome/Edge, https 또는 localhost)에서만 뜬다. 지원하지 않으면
+     각 파일을 브라우저 기본 다운로드 폴더로 순차 다운로드하는 방식으로 대체한다.
+============================================================ */
+async function saveAndArchiveSheetsForMonth(targetYear, targetMonth){
+  // 정식 7가지 품목에 속한 모든 기기 목록(기록 작성 여부와 무관하게 전부 포함)
+  const allDeviceTargets = [];
+  BASE_PRODUCTS.forEach(product=>{
+    (BASE_TO_DEVICES[product] || []).forEach(device=>{
+      allDeviceTargets.push({ product, device, location: locationForDevice(device) || '' });
+    });
+  });
+
+  const existingByDevice = new Map();
+  sheetIndex
+    .filter(s => s.year === targetYear && s.month === targetMonth)
+    .forEach(s => existingByDevice.set(s.device, s));
+
+  if(allDeviceTargets.length === 0){
+    toast('저장할 기기 목록이 없습니다.', true);
+    return;
+  }
+
+  const writtenCount = existingByDevice.size;
+  const blankCount = allDeviceTargets.length - writtenCount;
+  let confirmMsg = `${targetYear}년 ${targetMonth}월 기록을 엑셀로 저장합니다. (작성된 기록 ${writtenCount}건`;
+  confirmMsg += blankCount > 0 ? `, 기록을 작성하지 않은 기기 ${blankCount}건은 빈 양식으로 저장) ` : `) `;
+  confirmMsg += '저장이 끝나면 작성되어 있던 기록은 목록에서 삭제됩니다. 계속할까요?';
+  if(!confirm(confirmMsg)) return;
+
+  const supportsDirPicker = typeof window.showDirectoryPicker === 'function';
+  let dirHandle = null;
+  if(supportsDirPicker){
+    try{
+      dirHandle = await window.showDirectoryPicker();
+    }catch(e){
+      if(e && e.name === 'AbortError') return; // 사용자가 폴더 선택을 취소함
+      console.error(e);
+      toast('저장 폴더를 여는 중 오류가 발생했습니다.', true);
+      return;
+    }
+  }
+
+  const savedIds = [];
+  const failed = [];
+  for(const t of allDeviceTargets){
+    const existing = existingByDevice.get(t.device);
+    try{
+      let data;
+      if(existing){
+        data = await loadSheetById(existing.id);
+        if(!data){ failed.push(existing); continue; }
+      } else {
+        data = {
+          year: targetYear, month: targetMonth,
+          product: t.product, device: t.device, location: t.location,
+          rows: Array.from({length: DAYS_MIN_ROWS}, blankRow),
+          footerNote:'', manager:'', approver:'',
+          updatedAt: new Date().toISOString()
+        };
+      }
+      const blob = await buildWorkbookBlob(data);
+      const fname = `기기가동기록서_${sanitize(data.device)||'기기'}_${data.year}${String(data.month).padStart(2,'0')}.xlsx`;
+      if(dirHandle){
+        // 폴더 구조: 선택한 폴더 / 품목코드(G0720 등) / 파일.xlsx (해당 품목 파일이 한 폴더에 모임)
+        const productFolder = sanitize(data.product) || '미지정품목';
+        const productDirHandle = await dirHandle.getDirectoryHandle(productFolder, { create: true });
+        const fileHandle = await productDirHandle.getFileHandle(fname, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } else {
+        // 폴더 선택을 지원하지 않는 브라우저는 다운로드 폴더에 그대로 받는다
+        downloadBlob(blob, fname);
+      }
+      if(existing) savedIds.push(existing.id);
+    }catch(e){
+      console.error(e);
+      if(existing) failed.push(existing);
+    }
+  }
+
+  if(savedIds.length > 0){
+    for(const id of savedIds){ await deleteSheetById(id); }
+    sheetIndex = sheetIndex.filter(s => !savedIds.includes(s.id));
+    await saveSheetIndex();
+    if(currentSheetId && savedIds.includes(currentSheetId)){
+      await releaseSheetLock();
+      currentSheet = null;
+      currentSheetId = null;
+      document.getElementById('ledger-area').innerHTML = '';
+      document.getElementById('bottom-actions').style.display = 'none';
+      document.getElementById('save-btn').style.display = 'none';
+      document.getElementById('sheet-lock-banner').style.display = 'none';
+      document.getElementById('status-chip').textContent = '기록을 불러오세요';
+      document.getElementById('status-chip').className = 'status-chip';
+    }
+    renderRecordList(document.getElementById('record-search-input').value);
+  }
+
+  const locNote = dirHandle ? '선택한 폴더에' : '브라우저 기본 다운로드 폴더에';
+  let msg = `${targetYear}년 ${targetMonth}월 기록 총 ${allDeviceTargets.length}건(작성된 기록 ${savedIds.length}건 + 빈 양식 ${allDeviceTargets.length - writtenCount}건)을 ${locNote} 저장했습니다. 작성되어 있던 기록은 목록에서 삭제했습니다.`;
+  if(failed.length) msg += ` (${failed.length}건 실패: 목록에 그대로 남아있음)`;
+  toast(msg, failed.length > 0);
+}
+
+document.getElementById('prev-month-save-btn').addEventListener('click', async ()=>{
+  if(isReadOnly){ toast('보기 전용 모드에서는 저장/삭제할 수 없습니다.', true); return; }
+  const targetYear = parseInt(document.getElementById('sel-year').value, 10);
+  const targetMonth = parseInt(document.getElementById('sel-month').value, 10);
+  if(!targetYear || !targetMonth){
+    toast('상단에서 저장할 년도와 월을 먼저 선택하세요.', true);
+    return;
+  }
+  const btn = document.getElementById('prev-month-save-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+  try{
+    await saveAndArchiveSheetsForMonth(targetYear, targetMonth);
+  }catch(e){
+    console.error(e);
+    toast('선택한 월 기록 저장 중 오류가 발생했습니다. 다시 시도해주세요.', true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
 window.addEventListener('beforeunload', ()=>{
   if(currentUser && isPrimarySession && mySessionId){
     if(useServerApi){
