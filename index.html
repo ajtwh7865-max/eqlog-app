@@ -9,6 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --steel-1:#1b1f23;
@@ -129,9 +131,6 @@
   .btn-ghost:hover{border-color:#7d858c;}
   .btn-teal{background:var(--teal);color:#eef6f4;}
   .btn-teal:hover{filter:brightness(1.12);}
-  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
-  .btn-danger:hover{background:var(--danger);color:#fff;}
-  .btn-sm{padding:6px 10px;font-size:12px;}
   .login-error{
     background:rgba(168,51,42,.15);
     border:1px solid rgba(168,51,42,.5);
@@ -209,21 +208,12 @@
     border-radius:3px;
   }
   .status-chip.readonly{border-color:var(--amber);color:var(--amber);}
-  .mode-badge{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--steel-line);color:#9aa1a6;}
-  .mode-badge.server{border-color:var(--teal);color:#7fd8c9;}
-  .mode-badge.local{border-color:var(--danger);color:#ff9a8f;}
-  .file-warning{background:rgba(168,51,42,.2);border:1px solid var(--danger);color:#ff9a8f;font-size:12.5px;padding:10px 12px;border-radius:3px;margin-bottom:14px;line-height:1.6;}
   .mode-badge{
     font-size:11px;padding:4px 10px;border-radius:20px;
     border:1px solid var(--steel-line);color:#9aa1a6;
   }
   .mode-badge.server{border-color:var(--teal);color:#7fd8c9;}
   .mode-badge.local{border-color:var(--danger);color:#ff9a8f;}
-  .file-warning{
-    background:rgba(168,51,42,.2);border:1px solid var(--danger);
-    color:#ff9a8f;font-size:12.5px;padding:10px 12px;border-radius:3px;
-    margin-bottom:14px;line-height:1.6;
-  }
   .sign-note.readonly-note{color:var(--amber-dark);}
   input:disabled, select:disabled, textarea:disabled,
   input[readonly], textarea[readonly]{
@@ -274,60 +264,39 @@
   }
   .record-item .ri-del:hover{color:var(--danger);}
   .empty-note{font-size:12px;color:#6d747a;padding:10px 2px;line-height:1.6;}
-  .record-group{display:flex;flex-direction:column;gap:6px;}
+
+  .record-group{display:flex;flex-direction:column;}
+  .record-group + .record-group{border-top:1px solid var(--steel-line);margin-top:4px;padding-top:4px;}
   .record-group-header{
-    font-size:11px;
-    letter-spacing:.08em;
-    color:var(--amber);
-    font-weight:600;
-    text-transform:uppercase;
-    padding:8px 2px 2px 2px;
-    border-top:1px solid var(--steel-line);
-    margin-top:2px;
+    width:100%;
+    display:flex;align-items:center;gap:7px;
+    background:none;border:none;
+    padding:7px 4px;
+    cursor:pointer;
+    text-align:left;
+    font-family:inherit;
+    border-radius:3px;
   }
-  .record-group:first-child .record-group-header{border-top:none;margin-top:0;padding-top:0;}
-  .record-group-header .rg-count{color:#8f9599;font-weight:500;text-transform:none;letter-spacing:0;margin-left:4px;}
-  .record-group-header{display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px;position:relative;}
-  .dry-clean-wrap{
-    position:relative;
-    margin-left:auto;
-    display:inline-flex;
-  }
-  .dry-clean-badge{
-    display:inline-flex;align-items:center;gap:4px;
-    font-size:10.5px;font-weight:600;text-transform:none;letter-spacing:0;
-    padding:3px 8px;border-radius:20px;
-    background:rgba(255,255,255,.06);
-    border:1px solid var(--steel-line);
-    color:#9aa1a6;
-    cursor:default;
-    white-space:nowrap;
-  }
-  .dry-clean-badge::before{content:'💧';font-size:10px;}
-  .dry-clean-badge.all-done{border-color:var(--teal);color:#7fd8c9;}
-  .dry-clean-badge.has-undone{border-color:var(--danger);color:#ff9a8f;}
-  .dry-clean-tooltip{
-    position:absolute;
-    top:calc(100% + 6px);
-    right:0;
-    width:250px;
-    max-height:220px;
-    overflow-y:auto;
-    background:var(--steel-2);
+  .record-group-header:hover{background:rgba(255,255,255,.04);}
+  .rg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--steel-line);}
+  .rg-dot.done{background:#3fd67a;}
+  .rg-dot.partial{background:var(--amber);}
+  .rg-dot.none{background:var(--steel-line);}
+  .rg-label{font-size:12.5px;font-weight:600;color:var(--off-white);letter-spacing:.02em;white-space:nowrap;}
+  .rg-count{font-size:11px;color:#8f9599;font-weight:500;white-space:nowrap;}
+  .rg-spacer{flex:1;}
+  .rg-dry-mini{font-size:10.5px;font-weight:600;color:#9aa1a6;white-space:nowrap;}
+  .rg-dry-mini.all-done{color:#7fd8c9;}
+  .rg-dry-mini.has-undone{color:#ff9a8f;}
+  .rg-chevron{font-size:9px;color:#6d747a;transition:transform .15s ease;flex-shrink:0;display:inline-block;}
+  .record-group.expanded .rg-chevron{transform:rotate(180deg);}
+  .record-group-body{display:none;flex-direction:column;gap:6px;padding:2px 4px 6px 19px;}
+  .record-group.expanded .record-group-body{display:flex;}
+  .dc-lot-list{
+    background:rgba(255,255,255,.03);
     border:1px solid var(--steel-line);
     border-radius:6px;
-    box-shadow:0 12px 32px rgba(0,0,0,.5);
-    padding:10px;
-    z-index:40;
-    opacity:0;
-    visibility:hidden;
-    transform:translateY(-4px);
-    transition:opacity .12s ease, transform .12s ease, visibility .12s;
-    text-transform:none;letter-spacing:0;
-  }
-  .dry-clean-wrap:hover .dry-clean-tooltip,
-  .dry-clean-wrap:focus-within .dry-clean-tooltip{
-    opacity:1;visibility:visible;transform:translateY(0);
+    padding:8px 9px;
   }
   .dc-tooltip-title{
     font-size:10.5px;color:#9aa1a6;font-weight:600;
@@ -361,7 +330,7 @@
   .dc-lot-del:disabled{opacity:.4;cursor:not-allowed;}
   .device-status-line{
     display:flex;flex-wrap:wrap;gap:4px 10px;
-    padding:2px 2px 8px 2px;
+    padding:0;
     text-transform:none;letter-spacing:0;
   }
   .device-status-item{font-size:11.5px;font-weight:500;}
@@ -369,7 +338,7 @@
   .device-status-item .dev-flag{font-weight:700;}
   .device-status-item .dev-flag.done{color:#3fd67a;}
   .device-status-item .dev-flag.undone{color:#ff4d4d;}
-  .clean-booth-line{padding:0 2px 4px 2px;text-transform:none;letter-spacing:0;}
+  .clean-booth-line{padding:0;text-transform:none;letter-spacing:0;}
   .clean-booth-badge{
     display:inline-flex;align-items:center;gap:4px;
     font-size:10.5px;font-weight:600;
@@ -635,16 +604,6 @@
     justify-content:center;
     padding:8px;
   }
-  .sign-box input, .sign-box select.sign-select{
-    width:100%;
-    border:none;
-    background:transparent;
-    text-align:center;
-    font-family:'Oswald',sans-serif;
-    font-size:15px;
-    outline:none;
-    color:var(--ink);
-  }
   .stamp{
     position:absolute;
     right:8px;
@@ -664,12 +623,14 @@
     letter-spacing:.02em;
     pointer-events:none;
   }
-
-  .bottom-bar{
-    display:flex;
-    justify-content:flex-end;
-    gap:10px;
-    margin-top:18px;
+  .sign-date{
+    position:absolute;
+    left:8px;
+    bottom:6px;
+    font-size:10.5px;
+    color:#8a7f66;
+    font-family:'Noto Sans KR',sans-serif;
+    pointer-events:none;
   }
 
   .storage-note{
@@ -756,9 +717,12 @@
     <div class="readonly-banner" id="readonly-banner" style="display:none;"></div>
 
     <div>
-      <div class="side-section-label" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div class="side-section-label" style="margin-bottom:8px;">
         <span>저장된 기록 <span id="record-total-count" style="font-weight:600;color:#c0392b;"></span></span>
-        <button type="button" id="delete-all-btn" class="btn btn-danger" style="padding:3px 8px;font-size:11px;">전체삭제</button>
+      </div>
+      <div class="record-search" style="display:flex;gap:6px;margin-bottom:8px;">
+        <select id="record-filter-year" style="flex:1;padding:6px 8px;background:var(--steel-1);border:1px solid var(--steel-line);border-radius:3px;color:var(--off-white);font-size:12.5px;"></select>
+        <select id="record-filter-month" style="flex:1;padding:6px 8px;background:var(--steel-1);border:1px solid var(--steel-line);border-radius:3px;color:var(--off-white);font-size:12.5px;"></select>
       </div>
       <div class="record-search">
         <input type="text" id="record-search-input" placeholder="기기명, 설치장소 검색">
@@ -793,10 +757,10 @@
         <label>설치장소</label>
         <div id="sel-location-fixed" class="wide tb-fixed-display is-empty" data-placeholder="기기 선택 시 자동">기기 선택 시 자동</div>
       </div>
-      <button class="btn btn-teal" id="load-btn">불러오기 / 새 기록</button>
+      <button class="btn btn-teal" id="load-btn">불러오기</button>
       <button class="btn btn-ghost" id="gen-selected-month-btn">🗓️ 선택한 연월로 기기가동 생성</button>
       <button class="btn btn-primary" id="save-btn" style="display:none;">저장하기</button>
-      <button class="btn btn-ghost" id="prev-month-save-btn">💾 선택한 월 저장</button>
+      <button class="btn btn-ghost" id="prev-month-save-btn">📊 엑셀저장</button>
       <div class="tb-spacer"></div>
       <span class="status-chip" id="status-chip">기록을 불러오세요</span>
       <span class="mode-badge" id="mode-badge"></span>
@@ -806,17 +770,30 @@
 
     <div id="ledger-area"></div>
 
-    <div class="bottom-bar" id="bottom-actions" style="display:none;">
-      <button class="btn btn-ghost" id="download-btn">📥 엑셀(.xlsx) 다운로드</button>
-      <button class="btn btn-ghost" id="gdrive-btn">☁️ 구글드라이브 저장</button>
-      <button class="btn btn-ghost" id="next-month-btn">📅 다음달 기기가동 생성</button>
-    </div>
   </main>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
+/* ============================================================================
+   기기가동 기록서 — 전체 구조 안내 (큰 틀 → 작은 틀 순서로 아래에 이어짐)
+   ------------------------------------------------------------------------
+   1. STATE / HELPERS        : 전역 상태값, 공통 유틸(날짜·시간 포맷 등)
+   2. 기기·품목 참조 데이터    : 기기코드/품목코드/설치장소/공정/사용자 매핑
+   3. STORAGE LAYER          : Firebase(공유 DB) ↔ localStorage(백업) 저장소
+   4. 로그인 / 세션            : LOGIN, SESSION, ENTER APP
+   5. 사이드바 UI              : RECORD LIST(저장된 기록 목록), 건조실청소
+                                일지 체크, 클린부스 표시, 기기별 작성현황
+   6. 기록서 UI                : LOAD/CREATE SHEET, LEDGER RENDER(표 전체),
+                                서명칸 공통 렌더러 + 담당자/승인자/작업자/확인자
+   7. 저장                    : SAVE(수정 사유 확인 포함)
+   8. 엑셀 내보내기            : 원본 서식 그대로 유지되는 xlsx 생성, 빈칸 사선표시,
+                                여러 기기를 시트로 묶은 워크북 생성
+   9. 일괄 기능                : 선택한 연월로 기록 생성, 월별 일괄 저장(내보내기)
+   10. BOOTSTRAP              : 앱 시작
+   ============================================================================ */
+
 /* ============================================================
    STATE
 ============================================================ */
@@ -830,17 +807,7 @@ let isDirty = false;
 let isEditingExisting = false;   // true if this sheet already existed in storage when opened
 let rowSnapshotMap = new Map();  // rowObj -> {필드별 값} 스냅샷 at last load/save, to detect which specific fields actually changed
 
-// ---- 동시 로그인 허용 (제한 없음) ----
-let mySessionId = null;
-let isPrimarySession = false;
-let sessionHeartbeatTimer = null;
-let loginBlockedBy = null;
-const SESSION_HEARTBEAT_MS = 10000;
-const SESSION_STALE_MS = 25000;
-const GLOBAL_SESSION_KEY = 'global-session';
-
 let isReadOnly = false;
-let readOnlyRecheckTimer = null;
 
 const DAYS_MIN_ROWS = 20;
 // 위에서 5개 행을 줄인 만큼, 남은 데이터 행 높이를 균등하게 늘려서
@@ -858,18 +825,15 @@ function toast(msg, isError){
   t._timer = setTimeout(()=>{ t.className='toast'; }, 2400);
 }
 
+/* ============================================================
+   기기 · 품목 참조 데이터 (설비 배치가 바뀌면 이 블록만 고치면 됨)
+============================================================ */
 const DEVICE_CODES = [
   'RS-201','RS-202','RG-203','RS-204','RS-205','RG-206','RS-301','RS-302',
   'NF-101','NF-102','NF-103','NF-104','NF-105','NF-201','NF-202',
   'VD-101','VD-102','VD-103','VD-104','VD-105','VD-201','VD-202',
   'RG-205','NF-106'
 ];
-const LOCATION_CODES = [
-  '합성동 1층','합성동 2층','합성동 3층',
-  '건조실1','건조실2','건조실3','건조실4','건조실5',
-  '건조실2층1','건조실2층2'
-];
-
 // 품목명 -> 해당 품목에서 사용하는 기기명 목록
 const PRODUCT_DEVICE_MAP = {
   'O0711A6RE': ['RS-201','NF-102','VD-101'],
@@ -1080,17 +1044,93 @@ function setDirty(v){
 
 /* ============================================================
    STORAGE LAYER
-   - Inside Claude.ai artifact preview: uses window.storage (shared
-     across everyone who opens this artifact there).
-   - As a standalone downloaded .html file (double-clicked / hosted
-     on a server): window.storage does not exist, so this falls
-     back to the browser's localStorage. In that mode, data is only
-     stored on that one computer/browser, not shared across devices.
+   - 우선순위: Firebase(파이어베이스, 무료 클라우드 DB) > Claude 아티팩트
+     저장소(window.storage) > 이 브라우저 localStorage(마지막 수단, 이
+     PC/브라우저에만 저장되고 공유 안 됨).
+   - 예전에는 사내 PC에서 시작.bat으로 켠 개인 서버(/api/*)를 우선
+     사용했지만, 사람마다 각자 PC에서 서버를 따로 켜면 사람 수만큼 독립된
+     저장소가 생겨 계정/기록이 서로 공유되지 않는 문제가 있어 제거했다.
+     지금은 항상 Firebase를 먼저 사용하므로, 누가 어떤 기기로 접속하든
+     같은 계정/기록을 본다.
+   - FIREBASE_CONFIG가 비어있거나 연결에 실패하면 localStorage로 저장되며
+     이때는 브라우저마다 로그인 계정이 따로 저장되어 서로 공유되지 않는다.
+
+   [Firebase 연동 설정 방법 — 5분이면 끝]
+   1) https://console.firebase.google.com 접속 → 무료 계정으로 로그인
+      → "프로젝트 추가"로 새 프로젝트 생성 (Google 애널리틱스는 꺼도 됨)
+   2) 왼쪽 메뉴 "Firestore Database" → "데이터베이스 만들기" → 위치는
+      asia-northeast3(서울) 선택 → 시작 모드는 "테스트 모드"로 생성
+   3) 좌측 상단 톱니바퀴(프로젝트 설정) → 하단 "내 앱"에서 </> (웹) 아이콘
+      클릭 → 앱 닉네임 아무거나 입력 → "앱 등록"
+   4) 화면에 나오는 firebaseConfig 객체(apiKey, projectId 등)를 그대로
+      복사해서 아래 FIREBASE_CONFIG 안에 붙여넣기
+   5) Firestore Database → 규칙(Rules) 탭에서 아래처럼 바꾸고 "게시":
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /{document=**} {
+              allow read, write: if true;
+            }
+          }
+        }
+      (이 앱 자체 로그인이 있으므로 이렇게 열어두어도 괜찮지만, 회사
+       민감정보는 넣지 않는 것을 권장합니다 — 코드 상단에도 이미 안내되어
+       있는 내용입니다.)
+   6) 파일 저장 후 다시 배포(GitHub에 업로드)하면 끝. 다른 사람이 같은
+      주소로 접속해도 로그인 계정과 기록이 그대로 공유된다.
 ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBtf8lX15eLMRVKthHEzjl4pJKJTq5gVvk",
+  authDomain: "equipment-operation-log.firebaseapp.com",
+  projectId: "equipment-operation-log",
+  storageBucket: "equipment-operation-log.firebasestorage.app",
+  messagingSenderId: "695600318374",
+  appId: "1:695600318374:web:795fcf2a3f0179570cf167"
+};
+
 const LS_PREFIX = 'eqlog__';
 let storageModeNotified = false;
 let useServerApi = false;
 let serverShareUrls = [];
+let useFirebase = false;
+let firebaseDb = null;
+
+function isFirebaseConfigured(){
+  return !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+}
+
+// 지정한 시간(ms) 안에 promise가 끝나지 않으면 실패 처리하는 헬퍼.
+// (네트워크가 느릴 때 Firebase 연결 확인이 무한정 멈춰있지 않도록)
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=>reject(new Error('timeout')), ms))
+  ]);
+}
+
+async function initFirebaseBackend(){
+  if(!isFirebaseConfigured()) return false;
+  if(typeof firebase === 'undefined' || !firebase.initializeApp) return false;
+
+  // 네트워크가 일시적으로 불안정해도 바로 실패 처리하지 않도록 최대 2번 시도한다
+  // (각 시도는 5초 안에 응답이 없으면 실패로 간주하고 다음 시도로 넘어감)
+  for(let attempt=1; attempt<=2; attempt++){
+    try{
+      if(!firebase.apps || !firebase.apps.length){
+        firebase.initializeApp(FIREBASE_CONFIG);
+      }
+      firebaseDb = firebase.firestore();
+      // 연결 확인용으로 아무 문서나 한 번 읽어본다 (실패하면 firebase 모드를 쓰지 않음)
+      await withTimeout(firebaseDb.collection('kv').doc('__ping__').get(), 5000);
+      return true;
+    }catch(e){
+      console.error(`[기기가동 기록서] Firebase 연결 시도 ${attempt}번째 실패`, e);
+      firebaseDb = null;
+      if(attempt === 2) return false;
+    }
+  }
+  return false;
+}
 
 function hasArtifactStorage(){
   return typeof window.storage !== 'undefined'
@@ -1099,31 +1139,21 @@ function hasArtifactStorage(){
 }
 
 function storageModeLabel(){
-  if(useServerApi) return 'server';
+  if(useFirebase) return 'firebase';
   if(hasArtifactStorage()) return 'artifact';
   return 'local';
 }
 
+// 저장소 우선순위: Firebase(모든 사용자가 공유하는 클라우드 저장소) > Claude 아티팩트
+// 저장소 > 이 브라우저 로컬저장소(마지막 수단, 공유 안 됨).
+// ※ 예전에는 같은 사내망에서 시작.bat으로 켠 개인 PC 서버(/api/health)를 우선
+//   사용했지만, 사람마다 각자 자기 PC에서 서버를 따로 켜면 사람 수만큼 독립된
+//   저장소가 생겨 계정/기록이 서로 공유되지 않는 문제가 있었다. 이제는 항상
+//   Firebase를 우선 사용해 누가 어떤 PC로 접속하든 같은 데이터를 보도록 한다.
 async function initStorageBackend(){
-  if(location.protocol === 'file:'){
-    useServerApi = false;
-    serverShareUrls = [];
-    return;
-  }
-  try{
-    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(()=>ctrl.abort(), 3000) : null;
-    const r = await fetch('/api/health', ctrl ? { signal: ctrl.signal } : {});
-    if(timer) clearTimeout(timer);
-    useServerApi = r.ok;
-    if(r.ok){
-      const info = await r.json();
-      serverShareUrls = info.shareUrls || [];
-    }
-  }catch(e){
-    useServerApi = false;
-    serverShareUrls = [];
-  }
+  useServerApi = false;
+  serverShareUrls = [];
+  useFirebase = await initFirebaseBackend();
 }
 
 async function apiJson(path, opts={}){
@@ -1140,9 +1170,9 @@ function notifyStorageMode(){
   storageModeNotified = true;
   const mode = storageModeLabel();
   if(mode === 'local'){
-    console.info('[기기가동 기록서] 독립 실행: 이 PC 브라우저에만 저장됩니다. 회사 공유는 시작.bat 서버로 접속하세요.');
-  } else if(mode === 'server'){
-    console.info('[기기가동 기록서] 회사 공유망 서버 연결됨.');
+    console.info('[기기가동 기록서] 독립 실행: 이 PC 브라우저에만 저장됩니다. Firebase 연결에 실패했는지 확인해주세요.');
+  } else if(mode === 'firebase'){
+    console.info('[기기가동 기록서] Firebase 클라우드 저장소 연결됨. 모든 사용자에게 공유됩니다.');
   }
 }
 
@@ -1150,8 +1180,8 @@ function updateModeBadge(){
   const badge = document.getElementById('mode-badge');
   if(!badge) return;
   const mode = storageModeLabel();
-  if(mode === 'server'){
-    badge.textContent = '공유 서버 연결됨';
+  if(mode === 'firebase'){
+    badge.textContent = 'Firebase 연결됨 (공유됨)';
     badge.className = 'mode-badge server';
   } else if(mode === 'local'){
     badge.textContent = '단독 실행 (공유 안 됨)';
@@ -1170,6 +1200,15 @@ async function stGet(key, shared){
       if(data.value === null || data.value === undefined) return null;
       return { key, value: data.value, shared: !!shared };
     }catch(e){ return null; }
+  }
+  if(useFirebase && firebaseDb){
+    try{
+      const snap = await firebaseDb.collection('kv').doc(key).get();
+      if(!snap.exists) return null;
+      const data = snap.data();
+      if(data.value === null || data.value === undefined) return null;
+      return { key, value: data.value, shared: !!shared };
+    }catch(e){ console.error(e); return null; }
   }
   if(hasArtifactStorage()){
     try{ return await window.storage.get(key, shared); }
@@ -1191,6 +1230,12 @@ async function stSet(key, value, shared){
       return { key, value, shared: !!shared };
     }catch(e){ return null; }
   }
+  if(useFirebase && firebaseDb){
+    try{
+      await firebaseDb.collection('kv').doc(key).set({ value, updatedAt: Date.now() });
+      return { key, value, shared: !!shared };
+    }catch(e){ console.error(e); return null; }
+  }
   if(hasArtifactStorage()){
     try{ return await window.storage.set(key, value, shared); }
     catch(e){ return null; }
@@ -1207,6 +1252,12 @@ async function stDelete(key, shared){
       await apiJson('/api/kv/' + encodeURIComponent(key), { method: 'DELETE' });
       return { key, deleted: true, shared: !!shared };
     }catch(e){ return null; }
+  }
+  if(useFirebase && firebaseDb){
+    try{
+      await firebaseDb.collection('kv').doc(key).delete();
+      return { key, deleted: true, shared: !!shared };
+    }catch(e){ console.error(e); return null; }
   }
   if(hasArtifactStorage()){
     try{ return await window.storage.delete(key, shared); }
@@ -1232,6 +1283,8 @@ async function saveUsers(list){
    - 모든 사용자가 공유하는 저장소에 저장됨(shared=true).
 ============================================================ */
 let dryRoomCleanLog = {};
+// 사이드바에서 어떤 품목 그룹이 펼쳐져 있는지 기억 (목록이 다시 그려져도 유지)
+const expandedGroups = new Set();
 function dryRoomCleanKey(product, year, month){
   return `${product || '__none__'}_${year}${String(month).padStart(2,'0')}`;
 }
@@ -1247,9 +1300,22 @@ async function saveDryRoomLog(){
 // 달라지는 시점마다 하나의 "로트 변경 이벤트"로 뽑아낸다.
 // (건조실은 로트가 바뀔 때마다 청소일지를 새로 작성해야 하므로, 그 시점마다
 //  작성 여부를 따로 체크할 수 있게 하기 위함)
+//
+// [성능] 이 계산은 기기별로 Firebase 문서를 하나씩 읽어온다. 예전에는
+// renderRecordList()가 검색어를 한 글자 칠 때마다·연월을 바꿀 때마다
+// 매번 이걸 처음부터 다시 돌려서, 그때마다 다시 서버까지 왕복하느라
+// 타이핑이 버벅였다(=GitHub에 올려 여럿이 쓸 때 느껴지던 "렉"의 주범).
+// 실제 기록이 저장/삭제/생성되기 전까지는 같은 연월의 결과가 달라지지
+// 않으므로, (품목,연,월) 단위로 한 번 계산한 결과를 캐시해두고 재사용한다.
+const groupLotsCache = new Map();
+function groupLotsCacheKey(productKey, year, month){ return `${productKey}::${year}::${month}`; }
+function invalidateGroupLotsCache(){ groupLotsCache.clear(); }
+
 async function computeGroupLots(productKey, year, month){
+  const cacheKey = groupLotsCacheKey(productKey, year, month);
+  if(groupLotsCache.has(cacheKey)) return groupLotsCache.get(cacheKey);
+
   const devices = (BASE_TO_DEVICES[productKey] || []).filter(d => /^VD-/.test(d));
-  if(!devices.length) return [];
   const lots = [];
   for(const device of devices){
     const meta = sheetIndex.find(s => s.year===year && s.month===month && s.device===device);
@@ -1267,6 +1333,7 @@ async function computeGroupLots(productKey, year, month){
       if(v) prev = v;
     });
   }
+  groupLotsCache.set(cacheKey, lots);
   return lots;
 }
 
@@ -1345,6 +1412,7 @@ async function deleteSheetById(id){
   await stDelete('sheet:'+id, true);
 }
 
+
 // 실제로 사람이 내용을 입력했는지 판단 (단순히 시트가 "존재"하는 것과는 다름).
 // "다음달 기기가동 생성" 등으로 만들어진 빈 양식은 rows/footer/manager/approver가
 // 전부 비어있으므로 여기서 false로 판단되어, 사이드바에 "미작성"으로 표시된다.
@@ -1363,33 +1431,13 @@ function sheetHasData(data){
 /* ============================================================
    SESSION (동시 로그인 허용 — 차단/보기전용 없음)
 ============================================================ */
-function makeSessionId(){
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
 /** @returns {{ok:boolean}} */
 async function establishSession(){
-  mySessionId = makeSessionId();
-  loginBlockedBy = null;
-  isPrimarySession = true;
   isReadOnly = false;
   return { ok: true };
 }
 
-function startSessionHeartbeat(){ /* no-op */ }
-function stopSessionHeartbeat(){
-  if(sessionHeartbeatTimer){ clearInterval(sessionHeartbeatTimer); sessionHeartbeatTimer = null; }
-}
-
-async function releaseSession(){
-  stopSessionHeartbeat();
-  isPrimarySession = false;
-  mySessionId = null;
-}
-
-function stopReadOnlyRecheck(){
-  if(readOnlyRecheckTimer){ clearInterval(readOnlyRecheckTimer); readOnlyRecheckTimer = null; }
-}
+async function releaseSession(){ /* no-op: 동시 로그인 제한이 없어 별도 세션 해제가 필요 없음 */ }
 
 function updateReadOnlyUI(){
   const banner = document.getElementById('readonly-banner');
@@ -1404,9 +1452,19 @@ function isEditBlocked(){
   return false;
 }
 
-function updateSheetLockUI(){ /* no-op */ }
-async function releaseSheetLock(){ /* no-op */ }
-async function acquireSheetLock(id){ /* no-op */ }
+// 열려 있던 기록(currentSheet)을 닫고 화면을 "기록을 불러오세요" 초기 상태로
+// 되돌리는 공통 로직. 기록 삭제/전체삭제/월별삭제 등 여러 곳에서
+// 똑같이 반복되던 코드라 한 곳으로 모았다.
+async function resetActiveSheetView(){
+  currentSheet = null;
+  currentSheetId = null;
+  isEditingExisting = false;
+  document.getElementById('ledger-area').innerHTML='';
+  document.getElementById('save-btn').style.display='none';
+  document.getElementById('sheet-lock-banner').style.display='none';
+  document.getElementById('status-chip').textContent='기록을 불러오세요';
+  document.getElementById('status-chip').className='status-chip';
+}
 
 /* ============================================================
    LOGIN
@@ -1414,25 +1472,19 @@ async function acquireSheetLock(id){ /* no-op */ }
 function renderLoginExtras(){
   const noteSlot = document.getElementById('login-note-slot');
   const toggleSlot = document.getElementById('login-toggle-slot');
-  const fileWarn = location.protocol === 'file:'
-    ? '<div class="file-warning">⚠️ <b>지금은 HTML 파일을 직접 열었습니다.</b> 데이터가 이 PC에만 저장되어 <b>회사 동료와 공유되지 않습니다.</b><br>공유 사용: <b>기기가동_기록서_웹앱_server</b> 폴더의 <b>시작.bat</b> 실행 후 <b>http://서버IP:5080</b> 으로 접속하세요.</div>'
-    : '';
-  const shareNote = (storageModeLabel() === 'server' && serverShareUrls.length)
-    ? `<br><br>📡 <b>동료 PC 접속 주소:</b><br>${serverShareUrls.map(u=>`<code style="color:#7fd8c9">${escapeHtml(u)}</code>`).join('<br>')}`
-    : '';
-  const modeNote = storageModeLabel() === 'server'
-    ? '✅ 회사 공유망 서버 연결됨. <b>여러 명이 동시에 로그인</b>할 수 있습니다.' + shareNote
+  const modeNote = storageModeLabel() === 'firebase'
+    ? '✅ Firebase 클라우드 저장소 연결됨. <b>기기·브라우저가 달라도 계정과 기록이 그대로 공유</b>됩니다.'
     : hasArtifactStorage()
     ? '이 화면은 Claude 아티팩트 안에서 실행 중입니다. 데이터는 이 아티팩트를 여는 모든 사용자에게 공유됩니다.'
-    : '이 화면은 독립 실행형입니다. 데이터는 <b>이 브라우저에만</b> 저장됩니다. 회사 공유는 <b>시작.bat</b> 서버로 접속하세요.';
+    : '⚠️ Firebase 연결에 실패해 <b>이 브라우저에만</b> 저장되는 상태입니다. 다른 사람/기기와 공유되지 않으니, 인터넷 연결을 확인하고 새로고침해주세요.';
 
   if(signupMode){
     document.querySelector('#login-form button[type="submit"]').textContent = '계정 만들고 로그인';
-    noteSlot.innerHTML = fileWarn + '최초 관리자 계정을 생성합니다. 비밀번호는 별도의 암호화 없이 저장되니, 외부에 공개되지 않는 용도로만 사용하세요.<br><br>' + modeNote;
+    noteSlot.innerHTML = '최초 관리자 계정을 생성합니다. 비밀번호는 별도의 암호화 없이 저장되니, 외부에 공개되지 않는 용도로만 사용하세요.<br><br>' + modeNote;
     toggleSlot.innerHTML = '이미 계정이 있나요? <a id="to-login">로그인으로 돌아가기</a>';
   } else {
     document.querySelector('#login-form button[type="submit"]').textContent = '로그인';
-    noteSlot.innerHTML = fileWarn + '이 앱의 로그인은 현장 공용 데이터 보호를 위한 간단한 접근 제한입니다. 민감한 개인정보 보호용으로는 사용하지 마세요.<br><br>' + modeNote;
+    noteSlot.innerHTML = '이 앱의 로그인은 현장 공용 데이터 보호를 위한 간단한 접근 제한입니다. 민감한 개인정보 보호용으로는 사용하지 마세요.<br><br>' + modeNote;
     toggleSlot.innerHTML = '계정을 추가하시겠어요? <a id="to-signup">새 계정 만들기</a>';
   }
   const toLogin = document.getElementById('to-login');
@@ -1525,9 +1577,7 @@ async function initLoginScreen(){
 
 document.getElementById('logout-btn').addEventListener('click', async ()=>{
   if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 로그아웃하시겠습니까?')) return;
-  stopReadOnlyRecheck();
   await releaseSession();
-  await releaseSheetLock();
   currentUser = null;
   try{ localStorage.removeItem(CURRENT_USER_LS_KEY); }catch(e){}
   currentSheet = null;
@@ -1549,20 +1599,18 @@ async function enterApp(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').classList.add('active');
   document.getElementById('current-user-label').textContent = displayName(currentUser);
-  document.getElementById('sidebar-foot-note').textContent = storageModeLabel() === 'server'
-    ? (serverShareUrls.length
-      ? `여러 명 동시 로그인 가능. 접속: ${serverShareUrls[0]}`
-      : '여러 명이 동시에 로그인·수정할 수 있습니다.')
+  document.getElementById('sidebar-foot-note').textContent = storageModeLabel() === 'firebase'
+    ? 'Firebase 클라우드 저장소에 연결됨. 모든 사용자·기기에 공유됩니다.'
     : hasArtifactStorage()
     ? '데이터는 이 아티팩트를 여는 모든 사용자에게 공유됩니다.'
-    : '⚠️ 단독 실행: 이 PC에만 저장됩니다. 회사 공유는 시작.bat 서버로 접속하세요.';
+    : '⚠️ Firebase 연결 실패: 이 브라우저에만 저장됩니다. 인터넷 연결을 확인하고 새로고침해주세요.';
 
   updateReadOnlyUI();
   updateModeBadge();
-  if(storageModeLabel() === 'server'){
-    toast('서버 연결됨. 여러 명이 동시에 사용할 수 있습니다.');
-  } else if(location.protocol === 'file:'){
-    toast('⚠️ HTML 직접 실행 중 — 데이터 공유 안 됨. 시작.bat 서버로 접속하세요.', true);
+  if(storageModeLabel() === 'firebase'){
+    toast('Firebase 연결됨. 여러 명이 동시에 사용할 수 있습니다.');
+  } else if(!hasArtifactStorage()){
+    toast('⚠️ Firebase 연결 실패 — 데이터가 공유되지 않습니다. 인터넷 연결을 확인해주세요.', true);
   }
 
   populateYearMonth();
@@ -1643,6 +1691,19 @@ function populateYearMonth(){
     if(m===now.getMonth()+1) opt.selected=true;
     mSel.appendChild(opt);
   }
+
+  // 사이드바 "저장된 기록" 목록을 연도/월별로 필터링하기 위한 셀렉트
+  // (기본값은 "전체" — 모든 연월의 기록을 함께 보여줌)
+  const fySel = document.getElementById('record-filter-year');
+  const fmSel = document.getElementById('record-filter-month');
+  if(fySel){
+    fySel.innerHTML = '<option value="">연도: 전체</option>' +
+      Array.from({length:4}, (_,i)=>thisYear-2+i).map(y=>`<option value="${y}">${y}년</option>`).join('');
+  }
+  if(fmSel){
+    fmSel.innerHTML = '<option value="">월: 전체</option>' +
+      Array.from({length:12}, (_,i)=>i+1).map(m=>`<option value="${m}">${m}월</option>`).join('');
+  }
 }
 
 /* ============================================================
@@ -1659,21 +1720,47 @@ function deviceDisplayLabel(device){
   return device || '';
 }
 
-function deviceStatusLineHtml(productKey){
+// 품목그룹에 속한 기기들이 지정한 연/월에 작성됐는지 계산해서
+// [{device, approved, done}, ...] 형태로 반환. deviceStatusLineHtml과 사이드바
+// 상태점(dot) 계산이 같은 로직을 공유하도록 한 곳으로 모았다.
+// 승인자가 서명된 기록은 별도 보관함으로 옮기지 않고 sheetIndex meta의
+// approver 필드로만 표시한다 (activeRecord 그대로, 승인 여부만 다르게 보임).
+function computeDeviceDoneList(productKey, year, month){
   const devices = BASE_TO_DEVICES[productKey];
-  if(!devices || !devices.length) return '';
-  const selYear = parseInt(document.getElementById('sel-year').value, 10);
-  const selMonth = parseInt(document.getElementById('sel-month').value, 10);
-  if(!selYear || !selMonth) return '';
-  const writtenDevices = new Set(
+  if(!devices || !devices.length) return [];
+  if(!year || !month) return [];
+  const metaByDevice = new Map(
     sheetIndex
-      .filter(s => s.year === selYear && s.month === selMonth && s.product === productKey && s.hasData)
-      .map(s => s.device)
+      .filter(s => s.year === year && s.month === month && s.product === productKey)
+      .map(s => [s.device, s])
   );
-  const items = devices.map(dv=>{
-    const done = writtenDevices.has(dv);
+  return devices.map(dv => {
+    const meta = metaByDevice.get(dv);
+    const approved = !!(meta && meta.approver);
+    const written = !!(meta && meta.hasData);
+    return { device: dv, approved, done: written || approved };
+  });
+}
+
+// 사이드바 그룹 헤더의 상태점(dot) 색을 정하기 위한 요약 상태.
+// 상단 툴바에서 선택된 연/월 기준으로 판단한다.
+// 'done'(전부 작성) / 'partial'(일부만 작성) / 'none'(작성 없음 또는 해당 기기 없음)
+function computeGroupDotState(productKey, year, month){
+  const list = computeDeviceDoneList(productKey, year, month);
+  if(!list.length) return 'none';
+  const doneCount = list.filter(d=>d.done).length;
+  if(doneCount === 0) return 'none';
+  if(doneCount === list.length) return 'done';
+  return 'partial';
+}
+
+function deviceStatusLineHtml(productKey, year, month){
+  const list = computeDeviceDoneList(productKey, year, month);
+  if(!list.length) return '';
+  const items = list.map(({device, approved, done})=>{
+    const label = approved ? '승인완료' : (done ? '작성함' : '미작성');
     return `<span class="device-status-item">
-      <span class="dev-name">${escapeHtml(deviceDisplayLabel(dv))}</span><span class="dev-flag ${done ? 'done' : 'undone'}">${done ? '작성함' : '미작성'}</span>
+      <span class="dev-name">${escapeHtml(deviceDisplayLabel(device))}</span><span class="dev-flag ${done ? 'done' : 'undone'}">${label}</span>
     </span>`;
   }).join('');
   return `<div class="device-status-line">${items}</div>`;
@@ -1710,18 +1797,29 @@ async function renderRecordList(filter){
   const list = document.getElementById('record-list');
   const countEl = document.getElementById('record-total-count');
   filter = (filter||'').toLowerCase();
+
+  const fyRaw = document.getElementById('record-filter-year').value;
+  const fmRaw = document.getElementById('record-filter-month').value;
+  const fYear = fyRaw ? parseInt(fyRaw,10) : null;
+  const fMonth = fmRaw ? parseInt(fmRaw,10) : null;
+
   const items = sheetIndex
     .filter(s => !filter || (s.device||'').toLowerCase().includes(filter) || (s.location||'').toLowerCase().includes(filter))
+    .filter(s => fYear===null || s.year===fYear)
+    .filter(s => fMonth===null || s.month===fMonth)
     .sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
 
+  const filterActive = !!filter || fYear!==null || fMonth!==null;
   if(countEl){
-    countEl.textContent = filter
-      ? `(검색결과 ${items.length}건 / 전체 ${sheetIndex.length}건)`
+    countEl.textContent = filterActive
+      ? `(조회결과 ${items.length}건 / 전체 ${sheetIndex.length}건)`
       : `(전체 ${sheetIndex.length}건)`;
   }
 
   if(items.length===0){
-    list.innerHTML = `<div class="empty-note">저장된 기록이 없습니다. 상단에서 년/월과 기기 정보를 입력하고 "불러오기 / 새 기록"을 눌러 시작하세요.</div>`;
+    list.innerHTML = filterActive
+      ? `<div class="empty-note">조건에 맞는 저장된 기록이 없습니다.</div>`
+      : `<div class="empty-note">저장된 기록이 없습니다. 상단에서 년/월과 기기 정보를 입력하고 "불러오기"를 눌러 시작하세요.</div>`;
     return;
   }
 
@@ -1736,10 +1834,10 @@ async function renderRecordList(filter){
   const otherOrder = [...groupsMap.keys()].filter(c=>c && !BASE_PRODUCTS.includes(c)).sort();
   const orderedKeys = [...knownOrder, ...otherOrder, ...(groupsMap.has('')?['']:[])];
 
+  // 기기별 작성 현황·건조실청소 체크리스트는 상단 툴바에서 선택된 연/월 기준으로 계산한다.
   const dcSelYear = parseInt(document.getElementById('sel-year').value, 10);
   const dcSelMonth = parseInt(document.getElementById('sel-month').value, 10);
 
-  // 각 품목그룹마다, 이번 달 건조기 기록에서 로트(제조번호)가 바뀐 시점들을 미리 계산
   const groupLotsMap = new Map();
   for(const key of orderedKeys){
     groupLotsMap.set(key, await computeGroupLots(key, dcSelYear, dcSelMonth));
@@ -1761,8 +1859,8 @@ async function renderRecordList(filter){
     const dcPrefix = dryRoomCleanKey(key, dcSelYear, dcSelMonth);
     const doneCount = lots.filter(l => dryRoomCleanLog[dcPrefix+'::'+l.eventKey]).length;
     const totalCount = lots.length;
-    const badgeText = totalCount ? `건조실청소 ${doneCount}/${totalCount}` : '건조실청소 (해당없음)';
-    const badgeClass = totalCount===0 ? '' : (doneCount===totalCount ? ' all-done' : ' has-undone');
+    const dryMiniText = totalCount ? `💧${doneCount}/${totalCount}` : '💧–';
+    const dryMiniClass = totalCount===0 ? '' : (doneCount===totalCount ? ' all-done' : ' has-undone');
     const tooltipItemsHtml = lots.length ? lots.map(l=>{
       const checked = !!dryRoomCleanLog[dcPrefix+'::'+l.eventKey];
       return `<div class="dc-lot-item">
@@ -1772,32 +1870,51 @@ async function renderRecordList(filter){
         </label>
         ${checked ? `<button type="button" class="dc-lot-del" data-eventkey="${escapeHtml(l.eventKey)}" data-product="${escapeHtml(key)}" title="작성 체크 삭제" ${isReadOnly?'disabled':''}>✕</button>` : ''}
       </div>`;
-    }).join('') : `<div class="dc-lot-empty">이번 달 건조기 기록에 제조번호(로트)가 아직 입력되지 않았습니다.</div>`;
+    }).join('') : `<div class="dc-lot-empty">상단 툴바에서 선택한 연월 기준, 건조기 기록에 제조번호(로트)가 아직 입력되지 않았습니다.</div>`;
+
+    // 헤더 상태점은 상단 툴바에서 선택된 연/월 기준으로 판단 (지금 잘 챙기고 있는지 한눈에)
+    const dotState = computeGroupDotState(key, dcSelYear, dcSelMonth);
+
+    const isExpanded = expandedGroups.has(key);
 
     return `
-    <div class="record-group">
-      <div class="record-group-header">${label}<span class="rg-count">${groupItems.length}건</span>
-        <span class="dry-clean-wrap" tabindex="0">
-          <span class="dry-clean-badge${badgeClass}">${badgeText}</span>
-          <div class="dry-clean-tooltip">
-            <div class="dc-tooltip-title">건조실청소일지 작성현황<br>(로트번호가 바뀔 때마다 작성 확인)</div>
-            ${tooltipItemsHtml}
-          </div>
-        </span>
-      </div>
-      ${cleanBoothLineHtml(key)}
-      ${deviceStatusLineHtml(key)}
-      ${groupItems.map(s=>`
-        <div class="record-item ${s.id===currentSheetId?'active':''}" data-id="${s.id}">
-          <div class="ri-main">
-            <b>${escapeHtml(s.device)||'(기기명 미입력)'}</b>
-            <span>${s.year}년 ${s.month}월 · ${escapeHtml(s.location)||'-'}</span>
-          </div>
-          <button class="ri-del" data-del="${s.id}" title="삭제">✕</button>
+    <div class="record-group${isExpanded ? ' expanded' : ''}" data-group-key="${escapeHtml(key)}">
+      <button type="button" class="record-group-header" data-group-toggle="${escapeHtml(key)}">
+        <span class="rg-dot ${dotState}" title="${dotState==='done'?'선택한 연월 전체 작성 완료':dotState==='partial'?'선택한 연월 일부만 작성됨':'선택한 연월 기록 없음'}"></span>
+        <span class="rg-label">${label}</span>
+        <span class="rg-count">${groupItems.length}건</span>
+        <span class="rg-spacer"></span>
+        <span class="rg-dry-mini${dryMiniClass}" title="선택한 연월의 건조실청소일지 작성 진행률">${dryMiniText}</span>
+        <span class="rg-chevron">▾</span>
+      </button>
+      <div class="record-group-body">
+        ${cleanBoothLineHtml(key)}
+        ${deviceStatusLineHtml(key, dcSelYear, dcSelMonth)}
+        <div class="dc-lot-list">
+          <div class="dc-tooltip-title">건조실청소일지 작성현황<br>(로트번호가 바뀔 때마다 작성 확인)</div>
+          ${tooltipItemsHtml}
         </div>
-      `).join('')}
+        ${groupItems.map(s=>`
+          <div class="record-item ${s.id===currentSheetId?'active':''}" data-id="${s.id}">
+            <div class="ri-main">
+              <b>${escapeHtml(s.device)||'(기기명 미입력)'}</b>
+              <span>${s.year}년 ${s.month}월 · ${escapeHtml(s.location)||'-'}</span>
+            </div>
+            <button class="ri-del" data-del="${s.id}" title="삭제">✕</button>
+          </div>
+        `).join('')}
+      </div>
     </div>`;
   }).join('');
+
+  list.querySelectorAll('[data-group-toggle]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.groupToggle;
+      const groupEl = btn.closest('.record-group');
+      const nowExpanded = groupEl.classList.toggle('expanded');
+      if(nowExpanded) expandedGroups.add(key); else expandedGroups.delete(key);
+    });
+  });
 
   list.querySelectorAll('.record-item').forEach(el=>{
     el.addEventListener('click', (e)=>{
@@ -1815,18 +1932,11 @@ async function renderRecordList(filter){
       await deleteSheetById(id);
       sheetIndex = sheetIndex.filter(s=>s.id!==id);
       await saveSheetIndex();
+      invalidateGroupLotsCache();
       if(currentSheetId===id){
-        await releaseSheetLock();
-        currentSheet = null;
-        currentSheetId = null;
-        document.getElementById('ledger-area').innerHTML='';
-        document.getElementById('bottom-actions').style.display='none';
-        document.getElementById('save-btn').style.display='none';
-        document.getElementById('sheet-lock-banner').style.display='none';
-        document.getElementById('status-chip').textContent='기록을 불러오세요';
-        document.getElementById('status-chip').className='status-chip';
+        await resetActiveSheetView();
       }
-      renderRecordList(document.getElementById('record-search-input').value);
+      refreshRecordList();
       toast('삭제되었습니다.');
     });
   });
@@ -1872,15 +1982,15 @@ async function renderRecordList(filter){
         toast('저장 중 오류가 발생했습니다.', true);
         return;
       }
-      // 배지(n/m)와 색상도 즉시 갱신
-      const wrap = e.target.closest('.dry-clean-wrap');
-      const badge = wrap ? wrap.querySelector('.dry-clean-badge') : null;
-      if(badge){
-        const total = wrap.querySelectorAll('.dc-lot-checkbox').length;
-        const done = wrap.querySelectorAll('.dc-lot-checkbox:checked').length;
-        badge.textContent = `건조실청소 ${done}/${total}`;
-        badge.classList.toggle('all-done', done===total);
-        badge.classList.toggle('has-undone', done<total);
+      // 미니 배지(n/m)·색상·상태점을 즉시 갱신
+      const groupEl = e.target.closest('.record-group');
+      const miniBadge = groupEl ? groupEl.querySelector('.rg-dry-mini') : null;
+      if(miniBadge){
+        const total = groupEl.querySelectorAll('.dc-lot-checkbox').length;
+        const done = groupEl.querySelectorAll('.dc-lot-checkbox:checked').length;
+        miniBadge.textContent = `💧${done}/${total}`;
+        miniBadge.classList.toggle('all-done', done===total);
+        miniBadge.classList.toggle('has-undone', done<total);
       }
     });
   });
@@ -1902,52 +2012,33 @@ async function renderRecordList(filter){
         toast('삭제 중 오류가 발생했습니다.', true);
         return;
       }
-      renderRecordList(document.getElementById('record-search-input').value);
+      refreshRecordList();
       toast('삭제되었습니다.');
     });
   }
   list.querySelectorAll('.dc-lot-del').forEach(bindDcLotDelButton);
 }
 
+// renderRecordList()를 "현재 검색어 그대로 유지한 채" 다시 그릴 때 쓰는 짧은 래퍼.
+// (기록 저장/삭제 등 여러 이벤트 핸들러에서 반복되던 한 줄을 모았다)
+function refreshRecordList(){
+  renderRecordList(document.getElementById('record-search-input').value);
+}
+
 document.getElementById('record-search-input').addEventListener('input', (e)=>{
   renderRecordList(e.target.value);
 });
+document.getElementById('record-filter-year').addEventListener('change', ()=>{
+  refreshRecordList();
+});
+document.getElementById('record-filter-month').addEventListener('change', ()=>{
+  refreshRecordList();
+});
 document.getElementById('sel-year').addEventListener('change', ()=>{
-  renderRecordList(document.getElementById('record-search-input').value);
+  refreshRecordList();
 });
 document.getElementById('sel-month').addEventListener('change', ()=>{
-  renderRecordList(document.getElementById('record-search-input').value);
-});
-
-document.getElementById('delete-all-btn').addEventListener('click', async ()=>{
-  if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
-  if(sheetIndex.length === 0){ toast('삭제할 저장된 기록이 없습니다.', true); return; }
-
-  const count = sheetIndex.length;
-  if(!confirm(`저장된 기록 전체 ${count}건을 모두 삭제하시겠습니까?\n\n이 저장소는 모든 사용자가 함께 사용하는 공용 저장소이므로 다른 사람이 작성한 기록도 함께 삭제되며, 되돌릴 수 없습니다.`)) return;
-
-  const typed = prompt('정말로 전체 삭제하려면 아래 칸에 "전체삭제"를 입력하세요.');
-  if(typed !== '전체삭제'){ toast('입력이 일치하지 않아 취소되었습니다.', true); return; }
-
-  const ids = sheetIndex.map(s=>s.id);
-  for(const id of ids){ await deleteSheetById(id); }
-  sheetIndex = [];
-  await saveSheetIndex();
-
-  if(currentSheetId){
-    await releaseSheetLock();
-    currentSheet = null;
-    currentSheetId = null;
-    document.getElementById('ledger-area').innerHTML='';
-    document.getElementById('bottom-actions').style.display='none';
-    document.getElementById('save-btn').style.display='none';
-    document.getElementById('sheet-lock-banner').style.display='none';
-    document.getElementById('status-chip').textContent='기록을 불러오세요';
-    document.getElementById('status-chip').className='status-chip';
-  }
-
-  renderRecordList(document.getElementById('record-search-input').value);
-  toast(`저장된 기록 ${count}건을 모두 삭제했습니다.`);
+  refreshRecordList();
 });
 
 function escapeHtml(str){
@@ -1969,15 +2060,21 @@ document.getElementById('load-btn').addEventListener('click', async ()=>{
   if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
 
   const id = makeSheetId(year, month, device, location);
+
+  // "불러오기" 버튼은 이제 새 기록을 만들지 않고, 이미 저장되어 있는
+  // 기록만 불러온다. 7가지 품목(BASE_PRODUCTS)에 속한 어떤 기기를 선택해도
+  // 동일하게 동작한다 — 예: 2026년 08월 / RS-204를 선택하고 "불러오기"를
+  // 누르면 그 연월·기기에 해당하는 저장된 기록을 그대로 불러온다.
+  const exists = sheetIndex.some(s=>s.id===id);
+  if(!exists){
+    toast(`${year}년 ${month}월 "${device}" 기록이 아직 없습니다. 먼저 "선택한 연월로 기기가동 생성"으로 만들어주세요.`, true);
+    return;
+  }
+
   await openSheet(id, {year, month, product, device, location});
 });
 
 async function openSheet(id, metaIfNew){
-  // 이전에 열려있던 다른 기록의 편집 잠금은 여기서 반납
-  if(currentSheetId && currentSheetId !== id){
-    await releaseSheetLock();
-  }
-
   let data = await loadSheetById(id);
   isEditingExisting = !!data;
   if(!data){
@@ -1989,7 +2086,7 @@ async function openSheet(id, metaIfNew){
       year: metaIfNew.year, month: metaIfNew.month,
       product: metaIfNew.product || '', device: metaIfNew.device, location: metaIfNew.location,
       rows: Array.from({length: DAYS_MIN_ROWS}, blankRow),
-      footerNote:'', manager:'', approver:'',
+      footerNote:'', manager:'', approver:'', managerDate:'', approverDate:'',
       updatedAt: new Date().toISOString()
     };
   }
@@ -2031,10 +2128,9 @@ async function openSheet(id, metaIfNew){
   applyDeviceLocation();
 
   renderLedger();
-  document.getElementById('bottom-actions').style.display='flex';
   document.getElementById('save-btn').style.display='inline-flex';
   setDirty(false);
-  renderRecordList(document.getElementById('record-search-input').value);
+  refreshRecordList();
 }
 
 /* ============================================================
@@ -2087,23 +2183,11 @@ function renderLedger(){
         </div>
         <div class="footer-cell">
           <div class="footer-label">담당자</div>
-          <div class="sign-box">
-            <select id="footer-manager" class="sign-select" ${(!canSelectManager() || isEditBlocked()) ? 'disabled' : ''}>
-              <option value="">선택</option>
-              ${MANAGER_CODES.map(c=>`<option value="${c}" ${s.manager===c?'selected':''}>${displayName(c)}</option>`).join('')}
-            </select>
-            ${s.manager ? '<div class="stamp">확인</div>' : ''}
-          </div>
+          <div class="sign-box" id="footer-manager-box"></div>
         </div>
         <div class="footer-cell">
           <div class="footer-label">승인자</div>
-          <div class="sign-box">
-            <select id="footer-approver" class="sign-select" ${(!canSelectApprover() || isEditBlocked() || !s.manager) ? 'disabled' : ''}>
-              <option value="">선택</option>
-              ${APPROVER_CODES.map(c=>`<option value="${c}" ${s.approver===c?'selected':''}>${displayName(c)}</option>`).join('')}
-            </select>
-            ${s.approver ? '<div class="stamp">승인</div>' : ''}
-          </div>
+          <div class="sign-box" id="footer-approver-box"></div>
         </div>
       </div>
     </div>
@@ -2135,65 +2219,128 @@ function renderLedger(){
   });
 
   const footerNoteEl = document.getElementById('footer-note');
-  const footerManagerEl = document.getElementById('footer-manager');
-  const footerApproverEl = document.getElementById('footer-approver');
+  const footerManagerBox = document.getElementById('footer-manager-box');
+  const footerApproverBox = document.getElementById('footer-approver-box');
   footerNoteEl.addEventListener('input', (e)=>{ s.footerNote = e.target.value; setDirty(true); });
-  footerManagerEl.addEventListener('change', (e)=>{
-    if(!canSelectManager()){
-      toast('담당자는 김봉수·김희두 계정으로 로그인해야 선택할 수 있습니다.', true);
-      footerManagerEl.value = s.manager || '';
-      return;
-    }
-    s.manager = e.target.value;
-    setDirty(true);
-    refreshStamp('footer-manager', s.manager);
-    // 담당자 확인 여부에 따라 승인자 select 잠금/해제
-    if(!isEditBlocked() && canSelectApprover()){
-      footerApproverEl.disabled = !s.manager;
-    }
-    if(!s.manager && s.approver){
-      s.approver = '';
-      footerApproverEl.value = '';
-      refreshStamp('footer-approver', '');
-    }
-  });
-  footerApproverEl.addEventListener('change', (e)=>{
-    if(!s.manager){
-      toast('담당자(김봉수·김희두) 확인 후에 승인자를 선택할 수 있습니다.', true);
-      footerApproverEl.value = s.approver || '';
-      return;
-    }
-    if(!canSelectApprover()){
-      toast('승인자는 최창식 계정으로 로그인해야 선택할 수 있습니다.', true);
-      footerApproverEl.value = s.approver || '';
-      return;
-    }
-    s.approver = e.target.value;
-    setDirty(true);
-    refreshStamp('footer-approver', s.approver);
-  });
+  renderManagerSign(footerManagerBox, s, footerApproverBox);
+  renderApproverSign(footerApproverBox, s, footerManagerBox);
 
   if(isEditBlocked()){
     document.getElementById('add-row-btn').disabled = true;
     document.getElementById('add-today-btn').disabled = true;
     footerNoteEl.disabled = true;
-    footerManagerEl.disabled = true;
-    footerApproverEl.disabled = true;
     document.getElementById('save-btn').disabled = true;
   }
 }
 
-function refreshStamp(inputId, value){
-  const box = document.getElementById(inputId).parentElement;
-  let stamp = box.querySelector('.stamp');
-  if(value && !stamp){
-    stamp = document.createElement('div');
-    stamp.className='stamp';
-    stamp.textContent = inputId.includes('approver') ? '승인' : '확인';
-    box.appendChild(stamp);
-  } else if(!value && stamp){
-    stamp.remove();
+/* ============================================================
+   서명칸 공통 렌더러 (renderSignSlot)
+   - 담당자/승인자(하단, 도장+날짜 표시)와 작업자/확인자(표 안, 단순
+     서명)는 전부 "값이 있으면 이름+취소버튼, 없으면 조건에 따라
+     서명버튼 또는 안내문구" 라는 같은 상태기계를 쓴다. 예전엔 이 4개가
+     각자 따로 200줄 넘게 중복돼 있었는데, 다른 부분(선행조건 문구/서명
+     권한 함수/도장 여부)만 cfg로 넘기고 나머지는 여기 한 곳에서 처리한다.
+============================================================ */
+function appendSignNote(el, text, readonly){
+  const note = document.createElement('span');
+  note.className = 'sign-note' + (readonly ? ' readonly-note' : '');
+  note.textContent = text;
+  el.appendChild(note);
+}
+
+function renderSignSlot(el, cfg){
+  el.innerHTML = '';
+  const value = cfg.get();
+
+  if(value){
+    const wrap = document.createElement('div');
+    wrap.className = 'sign-filled';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'sign-name';
+    nameSpan.textContent = displayName(value);
+    wrap.appendChild(nameSpan);
+    if(!isEditBlocked() && currentUser === value){
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'sign-cancel';
+      cancelBtn.textContent = '✕';
+      cancelBtn.title = '서명 취소';
+      cancelBtn.addEventListener('click', ()=>{
+        const blockMsg = cfg.cancelBlockMsg && cfg.cancelBlockMsg();
+        if(blockMsg){ toast(blockMsg, true); return; }
+        cfg.set('');
+        if(cfg.withStamp) cfg.setDate('');
+        setDirty(true);
+        cfg.rerender();
+      });
+      wrap.appendChild(cancelBtn);
+    }
+    el.appendChild(wrap);
+    if(cfg.withStamp){
+      const dateEl = document.createElement('div');
+      dateEl.className = 'sign-date';
+      dateEl.textContent = formatSignDate(cfg.getDate());
+      el.appendChild(dateEl);
+      const stampEl = document.createElement('div');
+      stampEl.className = 'stamp';
+      stampEl.textContent = cfg.stampText;
+      el.appendChild(stampEl);
+    }
+    return;
   }
+
+  const prereqMsg = cfg.prereqMsg && cfg.prereqMsg();
+  if(prereqMsg){ appendSignNote(el, prereqMsg); return; }
+  if(isEditBlocked()){ appendSignNote(el, '미서명', true); return; }
+  if(!cfg.canSelect()){ appendSignNote(el, cfg.noAuthMsg); return; }
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'sign-btn';
+  btn.textContent = '서명';
+  btn.addEventListener('click', ()=>{
+    if(!currentUser) return;
+    if(!cfg.canSelect()){ toast(cfg.noAuthMsg, true); return; }
+    cfg.set(currentUser);
+    if(cfg.withStamp) cfg.setDate(new Date().toISOString());
+    setDirty(true);
+    cfg.rerender();
+  });
+  el.appendChild(btn);
+}
+
+// 담당자 서명칸: 로그인 계정이 담당자(MANAGER_CODES)면 "서명" 버튼을 눌러 본인 이름으로
+// 바로 서명한다 (목록에서 고르는 방식이 아니라, 로그인한 계정 이름이 그대로 들어감).
+function renderManagerSign(box, s, approverBox){
+  renderSignSlot(box, {
+    get: ()=>s.manager, set: v=>{ s.manager = v; },
+    getDate: ()=>s.managerDate, setDate: v=>{ s.managerDate = v; },
+    withStamp: true, stampText: '확인',
+    cancelBlockMsg: ()=> s.approver ? '승인자 서명이 이미 있어 담당자 서명을 취소할 수 없습니다. 승인자 서명을 먼저 취소하세요.' : null,
+    canSelect: canSelectManager, noAuthMsg: '담당자로 서명 가능한 계정이 아닙니다.',
+    rerender: ()=>{ renderManagerSign(box, s, approverBox); renderApproverSign(approverBox, s, box); }
+  });
+}
+
+// 승인자 서명칸: 담당자 서명이 먼저 있어야 하고, 로그인 계정이 승인자(APPROVER_CODES)면
+// "서명" 버튼으로 바로 본인 이름 서명 (선택 없이 로그인 계정 이름 그대로).
+function renderApproverSign(box, s, managerBox){
+  renderSignSlot(box, {
+    get: ()=>s.approver, set: v=>{ s.approver = v; },
+    getDate: ()=>s.approverDate, setDate: v=>{ s.approverDate = v; },
+    withStamp: true, stampText: '승인',
+    prereqMsg: ()=> !s.manager ? '담당자 확인 필요' : null,
+    canSelect: canSelectApprover, noAuthMsg: '승인자로 서명 가능한 계정이 아닙니다.',
+    rerender: ()=> renderApproverSign(box, s, managerBox)
+  });
+}
+
+// 담당자/승인자 서명 날짜를 "YYYY-MM-DD" 형태로 표시.
+function formatSignDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 /* ============================================================
@@ -2206,135 +2353,29 @@ function refreshStamp(inputId, value){
      같은 행에 작업자로 서명한 본인은 확인자로 서명 불가 (최창식은 승인자 전용, 확인자 목록에 없음)
 ============================================================ */
 function renderWorkerCell(td, rowObj, checkerTd){
-  td.innerHTML = '';
   td.className = 'sign-cell';
-
-  if(rowObj.worker){
-    const wrap = document.createElement('div');
-    wrap.className = 'sign-filled';
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'sign-name';
-    nameSpan.textContent = displayName(rowObj.worker);
-    wrap.appendChild(nameSpan);
-
-    if(!isEditBlocked() && currentUser === rowObj.worker){
-      const cancelBtn = document.createElement('button');
-      cancelBtn.type = 'button';
-      cancelBtn.className = 'sign-cancel';
-      cancelBtn.textContent = '✕';
-      cancelBtn.title = '서명 취소';
-      cancelBtn.addEventListener('click', ()=>{
-        if(rowObj.checker){
-          toast('확인자 서명이 이미 있어 작업자 서명을 취소할 수 없습니다. 확인자 서명을 먼저 취소하세요.', true);
-          return;
-        }
-        rowObj.worker = '';
-        setDirty(true);
-        renderWorkerCell(td, rowObj, checkerTd);
-        renderCheckerCell(checkerTd, rowObj, td);
-      });
-      wrap.appendChild(cancelBtn);
-    }
-    td.appendChild(wrap);
-  } else if(isEditBlocked()){
-    const note = document.createElement('span');
-    note.className = 'sign-note readonly-note';
-    note.textContent = '미서명';
-    td.appendChild(note);
-  } else if(!canSelectWorker()){
-    const note = document.createElement('span');
-    note.className = 'sign-note';
-    note.textContent = '작업자로 서명 가능한 계정이 아닙니다.';
-    td.appendChild(note);
-  } else {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'sign-btn';
-    btn.textContent = '서명';
-    btn.addEventListener('click', ()=>{
-      if(!currentUser) return;
-      if(!canSelectWorker()){ toast('작업자로 서명 가능한 계정이 아닙니다.', true); return; }
-      rowObj.worker = currentUser;
-      setDirty(true);
-      renderWorkerCell(td, rowObj, checkerTd);
-      renderCheckerCell(checkerTd, rowObj, td);
-    });
-    td.appendChild(btn);
-  }
+  renderSignSlot(td, {
+    get: ()=>rowObj.worker, set: v=>{ rowObj.worker = v; },
+    withStamp: false,
+    cancelBlockMsg: ()=> rowObj.checker ? '확인자 서명이 이미 있어 작업자 서명을 취소할 수 없습니다. 확인자 서명을 먼저 취소하세요.' : null,
+    canSelect: canSelectWorker, noAuthMsg: '작업자로 서명 가능한 계정이 아닙니다.',
+    rerender: ()=>{ renderWorkerCell(td, rowObj, checkerTd); renderCheckerCell(checkerTd, rowObj, td); }
+  });
 }
 
 function renderCheckerCell(td, rowObj, workerTd){
-  td.innerHTML = '';
   td.className = 'sign-cell';
-
-  if(!rowObj.worker){
-    const note = document.createElement('span');
-    note.className = 'sign-note';
-    note.textContent = '작업자 서명 필요';
-    td.appendChild(note);
-    return;
-  }
-
-  if(rowObj.checker){
-    const wrap = document.createElement('div');
-    wrap.className = 'sign-filled';
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'sign-name';
-    nameSpan.textContent = displayName(rowObj.checker);
-    wrap.appendChild(nameSpan);
-
-    if(!isEditBlocked() && currentUser === rowObj.checker){
-      const cancelBtn = document.createElement('button');
-      cancelBtn.type = 'button';
-      cancelBtn.className = 'sign-cancel';
-      cancelBtn.textContent = '✕';
-      cancelBtn.title = '서명 취소';
-      cancelBtn.addEventListener('click', ()=>{
-        rowObj.checker = '';
-        setDirty(true);
-        renderCheckerCell(td, rowObj, workerTd);
-      });
-      wrap.appendChild(cancelBtn);
-    }
-    td.appendChild(wrap);
-    return;
-  }
-
-  if(isEditBlocked()){
-    const note = document.createElement('span');
-    note.className = 'sign-note readonly-note';
-    note.textContent = '미서명';
-    td.appendChild(note);
-    return;
-  }
-
-  if(currentUser === rowObj.worker){
-    const note = document.createElement('span');
-    note.className = 'sign-note';
-    note.textContent = '다른 계정으로 로그인 후 서명 가능';
-    td.appendChild(note);
-    return;
-  }
-
-  if(!canSelectChecker()){
-    const note = document.createElement('span');
-    note.className = 'sign-note';
-    note.textContent = '확인자로 서명 가능한 계정이 없습니다.';
-    td.appendChild(note);
-    return;
-  }
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'sign-btn';
-  btn.textContent = '서명';
-  btn.addEventListener('click', ()=>{
-    if(!currentUser) return;
-    rowObj.checker = currentUser;
-    setDirty(true);
-    renderCheckerCell(td, rowObj, workerTd);
+  renderSignSlot(td, {
+    get: ()=>rowObj.checker, set: v=>{ rowObj.checker = v; },
+    withStamp: false,
+    prereqMsg: ()=>{
+      if(!rowObj.worker) return '작업자 서명 필요';
+      if(currentUser === rowObj.worker) return '다른 계정으로 로그인 후 서명 가능';
+      return null;
+    },
+    canSelect: canSelectChecker, noAuthMsg: '확인자로 서명 가능한 계정이 없습니다.',
+    rerender: ()=> renderCheckerCell(td, rowObj, workerTd)
   });
-  td.appendChild(btn);
 }
 
 function createRowEl(rowObj){
@@ -2610,34 +2651,27 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
       year: currentSheet.year, month: currentSheet.month,
       product: currentSheet.product, device: currentSheet.device, location: currentSheet.location,
       updatedAt: currentSheet.updatedAt,
-      hasData: sheetHasData(currentSheet)
+      hasData: sheetHasData(currentSheet),
+      approver: currentSheet.approver || ''
     };
     if(metaIdx>-1) sheetIndex[metaIdx] = meta; else sheetIndex.push(meta);
     await saveSheetIndex();
+    invalidateGroupLotsCache();
     setDirty(false);
     isEditingExisting = true;
     rowSnapshotMap = new Map();
     currentSheet.rows.forEach(r => rowSnapshotMap.set(r, rowFieldSnapshot(r)));
-    renderRecordList(document.getElementById('record-search-input').value);
-    toast('저장되었습니다.');
+    refreshRecordList();
+
+    // 승인자가 서명된 상태로 저장되어도 더 이상 별도 보관함으로 옮기지 않는다.
+    // 같은 자리(연도/월 아래)에 그대로 남고, 사이드바에는 "승인완료"로만 표시된다.
+    if(currentSheet.approver){
+      toast(`승인 완료 — ${currentSheet.device} / ${currentSheet.year}년 ${currentSheet.month}월`);
+    } else {
+      toast('저장되었습니다.');
+    }
   }catch(e){
     toast('저장 중 오류가 발생했습니다.', true);
-  }
-});
-
-/* ============================================================
-   EXCEL EXPORT (원본 서식(테두리/폰트/정렬) 그대로 유지)
-============================================================ */
-document.getElementById('download-btn').addEventListener('click', async ()=>{
-  if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
-  try{
-    const blob = await buildWorkbookBlob(currentSheet);
-    const fname = `기기가동기록서_${sanitize(currentSheet.device)||'기기'}_${currentSheet.year}${String(currentSheet.month).padStart(2,'0')}.xlsx`;
-    downloadBlob(blob, fname);
-    toast('엑셀 파일이 다운로드되었습니다.');
-  }catch(e){
-    console.error(e);
-    toast('엑셀 생성 중 오류가 발생했습니다.', true);
   }
 });
 
@@ -2869,53 +2903,6 @@ function buildDiagonalShapes(sheet){
   return shapes;
 }
 
-async function buildWorkbookBlob(sheet){
-  const zip = await JSZip.loadAsync(base64ToUint8Array(TEMPLATE_XLSX_BASE64));
-  // 제조번호처럼 칸보다 글자가 길어질 수 있는 셀은 칸을 벗어나지 않도록
-  // "셀에 맞게 줄임(shrinkToFit)" 스타일을 하나 추가한다 (styles.xml에 14번째 서식으로 삽입)
-  let stylesXml = await zip.file('xl/styles.xml').async('string');
-  stylesXml = stylesXml
-    .replace('<cellXfs count="13">', '<cellXfs count="19">')
-    .replace('</cellXfs>', '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="4" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs>');
-  zip.file('xl/styles.xml', stylesXml);
-
-  let sheetXml = buildSheetXml(sheet);
-
-  // 빈 칸 사선(빗금) 도형이 필요하면 drawing 파트를 추가하고 시트에 연결한다
-  const diagShapes = buildDiagonalShapes(sheet);
-  if(diagShapes.length){
-    zip.file('xl/drawings/drawing1.xml', buildDrawingXml(diagShapes));
-
-    let contentTypesXml = await zip.file('[Content_Types].xml').async('string');
-    contentTypesXml = contentTypesXml.replace('</Types>',
-      '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
-    zip.file('[Content_Types].xml', contentTypesXml);
-
-    zip.file('xl/worksheets/_rels/sheet1.xml.rels',
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>');
-
-    sheetXml = sheetXml.replace('</worksheet>', '<drawing r:id="rId1"/></worksheet>');
-  } else {
-    zip.file('xl/worksheets/_rels/sheet1.xml.rels',
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>');
-  }
-
-  zip.file('xl/worksheets/sheet1.xml', sheetXml);
-  // 특정 프린터에 저장된 인쇄 설정(printerSettings1.bin)을 더 이상 참조하지 않으므로
-  // 함께 제거 - 그래야 어느 PC/프린터에서 열어도 위 pageSetup(A4, 폭 맞춤)이 그대로 적용됨
-  zip.remove('xl/printerSettings/printerSettings1.bin');
-  // 문서 속성(작성자/마지막으로 수정한 사람)에 로그인 아이디(예: ajtwh7481)가 그대로
-  // 남지 않도록, 이름으로 변환해서 기록 (없으면 일반 이름으로 대체)
-  const authorName = (currentUser && displayName(currentUser)) || '기기가동기록서';
-  const nowIso = new Date().toISOString().replace(/\.\d+Z$/,'Z');
-  zip.file('docProps/core.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>${xmlEscape(authorName)}</dc:creator><cp:lastModifiedBy>${xmlEscape(authorName)}</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${nowIso}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${nowIso}</dcterms:modified></cp:coreProperties>`);
-  return zip.generateAsync({
-    type: 'blob',
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  });
-}
-
 // 엑셀 시트 탭 이름으로 쓸 수 없는 문자 제거 + 31자 길이 제한
 // (엑셀 시트명 금지문자: \ / ? * [ ] : , 앞뒤 공백/작은따옴표도 피함)
 function sanitizeSheetName(name){
@@ -3022,206 +3009,6 @@ function downloadBlob(blob, filename){
 }
 
 /* ============================================================
-   GOOGLE DRIVE 저장
-   - 엑셀(.xlsx) 다운로드 파일을 구글드라이브의 "기기가동기록서"
-     폴더에 자동 업로드합니다.
-   - 사용 전 준비물: Google Cloud Console에서 OAuth 클라이언트 ID(웹
-     애플리케이션)를 발급받아 아래 GOOGLE_CLIENT_ID 값에 넣어주세요.
-     "승인된 자바스크립트 원본(Authorized JavaScript origins)"에는
-     이 페이지를 여는 실제 주소(예: https://your-domain.com 또는
-     http://localhost:포트번호)를 등록해야 합니다.
-     ※ 파일을 그냥 더블클릭해서 여는 file:// 방식에서는 구글 로그인이
-        동작하지 않습니다. 반드시 http(s) 서버로 열어야 합니다.
-============================================================ */
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-const GDRIVE_FOLDER_NAME = '기기가동기록서';
-
-let gdriveTokenClientObj = null;
-let gdriveAccessToken = null;
-let gdriveFolderId = null;
-
-function isGDriveConfigured(){
-  return !!GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf('YOUR_GOOGLE_CLIENT_ID') !== 0;
-}
-
-function getGDriveClient(){
-  if(typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) return null;
-  if(!isGDriveConfigured()) return null;
-  if(!gdriveTokenClientObj){
-    gdriveTokenClientObj = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: GDRIVE_SCOPE,
-      callback: ()=>{}, // 매 호출마다 아래에서 덮어씀
-    });
-  }
-  return gdriveTokenClientObj;
-}
-
-function requestGDriveToken(){
-  return new Promise((resolve, reject)=>{
-    const client = getGDriveClient();
-    if(!client){ reject(new Error('NOT_CONFIGURED')); return; }
-    client.callback = (resp)=>{
-      if(!resp || resp.error){ reject(new Error((resp && resp.error) || 'AUTH_FAILED')); return; }
-      gdriveAccessToken = resp.access_token;
-      resolve(gdriveAccessToken);
-    };
-    client.error_callback = (err)=>{ reject(err || new Error('AUTH_FAILED')); };
-    client.requestAccessToken({ prompt: '' });
-  });
-}
-
-async function ensureGDriveToken(){
-  if(gdriveAccessToken) return gdriveAccessToken;
-  return requestGDriveToken();
-}
-
-async function getGDriveFolderId(token){
-  if(gdriveFolderId) return gdriveFolderId;
-  const q = encodeURIComponent(`name='${GDRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
-    headers: { Authorization: 'Bearer ' + token }
-  });
-  if(!res.ok) throw new Error('DRIVE_API_ERROR');
-  const data = await res.json();
-  if(data.files && data.files.length > 0){
-    gdriveFolderId = data.files[0].id;
-    return gdriveFolderId;
-  }
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: GDRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
-  });
-  if(!createRes.ok) throw new Error('DRIVE_API_ERROR');
-  const created = await createRes.json();
-  gdriveFolderId = created.id;
-  return gdriveFolderId;
-}
-
-async function uploadXlsxToDrive(blob, filename, isRetry){
-  const token = await ensureGDriveToken();
-  try{
-    const folderId = await getGDriveFolderId(token);
-    const metadata = { name: filename, parents: [folderId] };
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    form.append('file', blob);
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token },
-      body: form
-    });
-    if(res.status === 401 && !isRetry){
-      gdriveAccessToken = null;
-      gdriveFolderId = null;
-      return uploadXlsxToDrive(blob, filename, true);
-    }
-    if(!res.ok) throw new Error('DRIVE_UPLOAD_ERROR');
-    return await res.json();
-  }catch(e){
-    if(!isRetry && e.message === 'DRIVE_API_ERROR'){
-      gdriveAccessToken = null;
-      gdriveFolderId = null;
-      return uploadXlsxToDrive(blob, filename, true);
-    }
-    throw e;
-  }
-}
-
-document.getElementById('gdrive-btn').addEventListener('click', async ()=>{
-  if(!currentSheet){ toast('먼저 기록을 불러오세요.', true); return; }
-  if(!isGDriveConfigured()){
-    toast('구글드라이브 연동이 아직 설정되지 않았습니다. (관리자에게 문의하세요)', true);
-    return;
-  }
-  const btn = document.getElementById('gdrive-btn');
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '업로드 중...';
-  try{
-    const blob = await buildWorkbookBlob(currentSheet);
-    const fname = `기기가동기록서_${sanitize(currentSheet.device)||'기기'}_${currentSheet.year}${String(currentSheet.month).padStart(2,'0')}.xlsx`;
-    await uploadXlsxToDrive(blob, fname);
-    toast('구글드라이브에 저장되었습니다. ("' + GDRIVE_FOLDER_NAME + '" 폴더 확인)');
-  }catch(e){
-    console.error(e);
-    if(e && e.message === 'NOT_CONFIGURED'){
-      toast('구글드라이브 연동이 아직 설정되지 않았습니다. (관리자에게 문의하세요)', true);
-    } else {
-      toast('구글드라이브 저장 중 오류가 발생했습니다. 다시 시도해주세요.', true);
-    }
-  }finally{
-    btn.disabled = false;
-    btn.textContent = originalText;
-  }
-});
-
-/* ============================================================
-   다음달 기기가동 생성
-   - 정식 7가지 품목(BASE_PRODUCTS)에 속한 모든 기기에 대해,
-     "다음달"(오늘 날짜 기준) 빈 기록을 한 번에 만들어준다.
-   - 이미 같은 연/월/기기 조합의 기록이 있으면 건너뛴다(중복 생성 방지).
-============================================================ */
-async function generateNextMonthSheets(){
-  const now = new Date();
-  let nextMonth = now.getMonth() + 2; // getMonth()는 0부터 시작하므로 +1(다음달) +1(0→1월 보정)
-  let nextYear = now.getFullYear();
-  if(nextMonth > 12){ nextMonth -= 12; nextYear += 1; }
-
-  const targets = [];
-  BASE_PRODUCTS.forEach(product=>{
-    (BASE_TO_DEVICES[product] || []).forEach(device=>{
-      targets.push({ product, device });
-    });
-  });
-
-  let created = 0, skipped = 0;
-  for(const t of targets){
-    const location = locationForDevice(t.device) || '';
-    const id = makeSheetId(nextYear, nextMonth, t.device, location);
-    if(sheetIndex.some(s=>s.id===id)){ skipped++; continue; }
-    const nowIso = new Date().toISOString();
-    const data = {
-      year: nextYear, month: nextMonth,
-      product: t.product, device: t.device, location: location,
-      rows: Array.from({length: DAYS_MIN_ROWS}, blankRow),
-      footerNote:'', manager:'', approver:'',
-      updatedAt: nowIso
-    };
-    await saveSheetById(id, data);
-    sheetIndex.push({
-      id, year: nextYear, month: nextMonth,
-      product: t.product, device: t.device, location: location,
-      updatedAt: nowIso,
-      hasData: false
-    });
-    created++;
-  }
-  if(created > 0) await saveSheetIndex();
-  renderRecordList(document.getElementById('record-search-input').value);
-  toast(`${nextYear}년 ${nextMonth}월 기록 ${created}건 생성됨` + (skipped ? ` (이미 있던 ${skipped}건은 건너뜀)` : ''));
-}
-
-document.getElementById('next-month-btn').addEventListener('click', async ()=>{
-  if(isReadOnly){ toast('보기 전용 모드에서는 생성할 수 없습니다.', true); return; }
-  const btn = document.getElementById('next-month-btn');
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '생성 중...';
-  try{
-    await generateNextMonthSheets();
-  }catch(e){
-    console.error(e);
-    toast('다음달 기록 생성 중 오류가 발생했습니다. 다시 시도해주세요.', true);
-  }finally{
-    btn.disabled = false;
-    btn.textContent = originalText;
-  }
-});
-
-/* ============================================================
    선택한 연월로 기기가동 생성
    - "다음달 기기가동 생성"과 동일한 방식이지만, 오늘 날짜 기준 다음달이
      아니라 상단 툴바에서 사용자가 고른 "년도/월" 드롭다운 값을 그대로
@@ -3254,7 +3041,7 @@ async function generateSheetsForSelectedMonth(){
       year: targetYear, month: targetMonth,
       product: t.product, device: t.device, location: location,
       rows: Array.from({length: DAYS_MIN_ROWS}, blankRow),
-      footerNote:'', manager:'', approver:'',
+      footerNote:'', manager:'', approver:'', managerDate:'', approverDate:'',
       updatedAt: nowIso
     };
     await saveSheetById(id, data);
@@ -3266,8 +3053,8 @@ async function generateSheetsForSelectedMonth(){
     });
     created++;
   }
-  if(created > 0) await saveSheetIndex();
-  renderRecordList(document.getElementById('record-search-input').value);
+  if(created > 0){ await saveSheetIndex(); invalidateGroupLotsCache(); }
+  refreshRecordList();
   toast(`${targetYear}년 ${targetMonth}월 기록 ${created}건 생성됨` + (skipped ? ` (이미 있던 ${skipped}건은 건너뜀)` : ''));
 }
 
@@ -3365,7 +3152,7 @@ async function saveAndArchiveSheetsForMonth(targetYear, targetMonth){
             year: targetYear, month: targetMonth,
             product, device, location,
             rows: Array.from({length: DAYS_MIN_ROWS}, blankRow),
-            footerNote:'', manager:'', approver:'',
+            footerNote:'', manager:'', approver:'', managerDate:'', approverDate:'',
             updatedAt: new Date().toISOString()
           };
         } else {
@@ -3418,21 +3205,6 @@ document.getElementById('prev-month-save-btn').addEventListener('click', async (
   }finally{
     btn.disabled = false;
     btn.textContent = originalText;
-  }
-});
-
-window.addEventListener('beforeunload', ()=>{
-  if(currentUser && isPrimarySession && mySessionId){
-    if(useServerApi){
-      fetch('/api/global-session', {
-        method: 'DELETE',
-        keepalive: true,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: mySessionId }),
-      });
-    } else {
-      deleteGlobalSession();
-    }
   }
 });
 
