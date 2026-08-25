@@ -13,40 +13,63 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
-    --steel-1:#1b1f23;
-    --steel-2:#262b30;
-    --steel-3:#33393f;
-    --steel-line:#3d444b;
-    --paper:#f6f1e4;
-    --paper-2:#efe8d6;
-    --paper-line:#cdbf9c;
-    --ink:#242019;
-    --ink-soft:#5b5346;
-    --amber:#e2a13a;
-    --amber-dark:#b97e22;
-    --teal:#33645f;
-    --teal-dark:#234642;
-    --stamp:#a8332a;
-    --danger:#a8332a;
-    --off-white:#f2ede2;
+    --bg:#eef0f2;
+    --card:#ffffff;
+    --card-line:#e2e4e8;
+    --ink:#1a1a1a;
+    --ink-soft:#5b6472;
+    --muted:#8a8f98;
+    --line:#d8dade;
+    --line-soft:#edeef0;
+    --accent-1:#2b6ef2;
+    --accent-2:#8b3ff2;
+    --chip-bg:#eef3ff;
+    --chip-ink:#2b58c9;
+    --green:#1a8f4c;
+    --green-bg:#e5f5ea;
+    --amber-bg:#fff3d6;
+    --amber-ink:#a06b06;
+    --red:#c0392b;
+    --red-bg:#fbeaea;
+    --paper:#fffdf7;
+    --off-white:#f7f8fa;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:var(--steel-1);
+    background:var(--bg);
     font-family:'Noto Sans KR',sans-serif;
-    color:var(--off-white);
+    color:var(--ink);
     min-height:100vh;
   }
-  ::selection{background:var(--amber);color:var(--ink);}
+  ::selection{background:var(--accent-1);color:#fff;}
   input,select,textarea,button{font-family:inherit;}
 
-  /* ---------- utility bar textures ---------- */
-  .hazard-strip{
-    height:6px;
-    background:repeating-linear-gradient(135deg, var(--amber) 0 14px, var(--steel-1) 14px 28px);
-    opacity:.9;
+  /* ---------- shared buttons ---------- */
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    border-radius:5px;
+    padding:10px 16px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    transition:filter .15s ease, transform .05s ease, background .15s ease;
   }
+  .btn:active{transform:translateY(1px);}
+  .btn:hover{background:var(--off-white);}
+  .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .btn-primary:hover{filter:brightness(1.2);}
+  .btn-block{width:100%;}
+  .btn-ghost{background:#fff;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn-danger{background:#fff;border-color:var(--red-bg);color:var(--red);font-weight:700;}
+  .btn-danger:hover{background:var(--red-bg);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none;}
 
   /* ---------- LOGIN ---------- */
   #login-screen{
@@ -59,34 +82,32 @@
   .login-card{
     width:100%;
     max-width:380px;
-    background:var(--steel-2);
-    border:1px solid var(--steel-line);
-    border-radius:4px;
+    background:var(--card);
+    border:1px solid var(--card-line);
+    border-radius:10px;
     padding:0 0 28px 0;
     overflow:hidden;
-    box-shadow:0 20px 60px rgba(0,0,0,.45);
+    box-shadow:0 12px 32px rgba(20,24,32,.08);
   }
   .login-head{
     padding:28px 28px 18px 28px;
-    border-bottom:1px solid var(--steel-line);
+    border-bottom:1px solid var(--line-soft);
   }
   .plate-label{
-    font-family:'Oswald',sans-serif;
-    letter-spacing:.18em;
     font-size:11px;
-    color:var(--amber);
-    font-weight:600;
+    letter-spacing:.16em;
+    color:var(--accent-1);
+    font-weight:700;
     text-transform:uppercase;
   }
   .login-head h1{
-    font-family:'Oswald',sans-serif;
-    font-size:26px;
-    font-weight:600;
+    font-size:24px;
+    font-weight:900;
     margin:6px 0 0 0;
-    letter-spacing:.01em;
+    letter-spacing:-.01em;
   }
   .login-sub{
-    color:#9aa1a6;
+    color:var(--muted);
     font-size:13px;
     margin-top:6px;
   }
@@ -95,54 +116,33 @@
   .field label{
     display:block;
     font-size:12px;
-    color:#a7adb2;
+    color:var(--ink-soft);
     margin-bottom:6px;
-    font-weight:500;
+    font-weight:600;
   }
   .field input{
     width:100%;
     padding:11px 12px;
-    background:var(--steel-1);
-    border:1px solid var(--steel-line);
-    border-radius:3px;
-    color:var(--off-white);
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:5px;
+    color:var(--ink);
     font-size:14px;
     outline:none;
   }
-  .field input:focus{border-color:var(--amber);}
-  .btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:6px;
-    border:none;
-    border-radius:3px;
-    padding:11px 18px;
-    font-size:14px;
-    font-weight:600;
-    cursor:pointer;
-    transition:filter .15s ease, transform .05s ease;
-  }
-  .btn:active{transform:translateY(1px);}
-  .btn-primary{background:var(--amber);color:#241a08;}
-  .btn-primary:hover{filter:brightness(1.08);}
-  .btn-block{width:100%;}
-  .btn-ghost{background:transparent;color:#c7ccd0;border:1px solid var(--steel-line);}
-  .btn-ghost:hover{border-color:#7d858c;}
-  .btn-teal{background:var(--teal);color:#eef6f4;}
-  .btn-teal:hover{filter:brightness(1.12);}
+  .field input:focus{border-color:var(--accent-1);}
   .login-error{
-    background:rgba(168,51,42,.15);
-    border:1px solid rgba(168,51,42,.5);
-    color:#ff9a8f;
+    background:var(--red-bg);
+    border:1px solid #f3c9c9;
+    color:var(--red);
     font-size:12.5px;
     padding:9px 11px;
-    border-radius:3px;
+    border-radius:5px;
     margin-bottom:14px;
   }
   .login-note{
     font-size:11.5px;
-    color:#7d858c;
+    color:var(--muted);
     padding:16px 28px 0 28px;
     line-height:1.6;
   }
@@ -150,240 +150,113 @@
     text-align:center;
     margin-top:16px;
     font-size:12.5px;
-    color:#9aa1a6;
+    color:var(--ink-soft);
   }
-  .login-toggle a{color:var(--amber);cursor:pointer;text-decoration:underline;}
+  .login-toggle a{color:var(--accent-1);cursor:pointer;text-decoration:underline;}
 
   /* ---------- APP SHELL ---------- */
-  #app-screen{display:none;min-height:100vh;grid-template-columns:280px 1fr;}
-  #app-screen.active{display:grid;}
-  .sidebar{
-    background:var(--steel-2);
-    border-right:1px solid var(--steel-line);
-    padding:20px 16px 20px 16px;
-    display:flex;
-    flex-direction:column;
-    gap:18px;
+  #app-screen{display:none;min-height:100vh;}
+  #app-screen.active{display:block;}
+  .app-wrap{
+    max-width:1240px;
+    margin:0 auto;
+    padding:28px 20px 60px 20px;
   }
-  .brand{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding-bottom:14px;
-    border-bottom:1px solid var(--steel-line);
+  .card{
+    background:var(--card);
+    border:1px solid var(--card-line);
+    border-radius:8px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+    padding:24px 28px 30px 28px;
   }
-  .brand-mark{
-    width:34px;height:34px;border-radius:3px;
-    background:var(--amber);
-    display:flex;align-items:center;justify-content:center;
-    font-family:'Oswald',sans-serif;font-weight:700;color:#241a08;font-size:15px;
+
+  .topbar{
+    display:flex; justify-content:flex-end; align-items:center; gap:10px;
+    margin-bottom:18px;
   }
-  .brand-text .t1{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;letter-spacing:.03em;}
-  .brand-text .t2{font-size:11px;color:#9aa1a6;}
-  .side-section-label{
-    font-size:11px;
-    letter-spacing:.12em;
-    color:var(--amber);
-    font-weight:600;
-    text-transform:uppercase;
-  }
-  .user-pill{
-    display:flex;align-items:center;justify-content:space-between;
-    background:var(--steel-1);
-    border:1px solid var(--steel-line);
-    border-radius:3px;
-    padding:9px 11px;
-    font-size:12.5px;
-  }
-  .user-pill span{color:#c7ccd0;}
-  .user-pill a{color:#9aa1a6;font-size:12px;cursor:pointer;}
-  .user-pill a:hover{color:var(--amber);}
-  .readonly-banner{
-    background:rgba(226,161,58,.14);
-    border:1px solid var(--amber);
-    color:var(--amber);
-    font-size:11.5px;
-    line-height:1.6;
-    padding:9px 10px;
-    border-radius:3px;
-  }
-  .status-chip.readonly{border-color:var(--amber);color:var(--amber);}
+  .who{font-size:13.5px;color:var(--ink-soft);}
+  .who b{font-weight:700;color:var(--ink);}
   .mode-badge{
     font-size:11px;padding:4px 10px;border-radius:20px;
-    border:1px solid var(--steel-line);color:#9aa1a6;
+    border:1px solid var(--line);color:var(--muted);
+    margin-right:auto;
   }
-  .mode-badge.server{border-color:var(--teal);color:#7fd8c9;}
-  .mode-badge.local{border-color:var(--danger);color:#ff9a8f;}
-  .sign-note.readonly-note{color:var(--amber-dark);}
-  input:disabled, select:disabled, textarea:disabled,
-  input[readonly], textarea[readonly]{
-    opacity:.65;
-    cursor:not-allowed;
-  }
-  .btn:disabled, .sign-btn:disabled, .link-btn:disabled{
-    opacity:.4;
-    cursor:not-allowed;
-    pointer-events:none;
-  }
+  .mode-badge.server{border-color:var(--green);color:var(--green);}
+  .mode-badge.local{border-color:var(--red);color:var(--red);}
 
-  .record-search input{
-    width:100%;
-    padding:8px 10px;
-    background:var(--steel-1);
-    border:1px solid var(--steel-line);
-    border-radius:3px;
-    color:var(--off-white);
-    font-size:13px;
-    margin-bottom:10px;
+  .brand-row{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
+  .brand-mark{
+    width:42px;height:42px;border-radius:9px;
+    background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:900;font-size:16px;
+    flex-shrink:0;
   }
-  .record-list{
-    display:flex;flex-direction:column;gap:6px;
-    overflow-y:auto;
-    max-height:calc(100vh - 420px);
-    min-height:120px;
-    padding-right:2px;
-  }
-  .record-item{
-    background:var(--steel-1);
-    border:1px solid var(--steel-line);
-    border-radius:3px;
-    padding:9px 10px;
-    cursor:pointer;
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:8px;
-  }
-  .record-item:hover{border-color:var(--amber);}
-  .record-item.active{border-color:var(--amber);background:rgba(226,161,58,.09);}
-  .record-item .ri-main{font-size:12.5px;line-height:1.5;}
-  .record-item .ri-main b{color:var(--off-white);display:block;font-size:13px;}
-  .record-item .ri-main span{color:#8f9599;}
-  .record-item .ri-del{
-    background:none;border:none;color:#6d747a;cursor:pointer;font-size:15px;line-height:1;padding:2px;
-  }
-  .record-item .ri-del:hover{color:var(--danger);}
-  .empty-note{font-size:12px;color:#6d747a;padding:10px 2px;line-height:1.6;}
+  .brand-row h1{font-size:24px;font-weight:900;margin:0;letter-spacing:-.01em;}
+  .brand-row .sub{font-size:12px;color:var(--muted);margin-top:2px;}
 
-  .record-group{display:flex;flex-direction:column;}
-  .record-group + .record-group{border-top:1px solid var(--steel-line);margin-top:4px;padding-top:4px;}
-  .record-group-header{
-    width:100%;
-    display:flex;align-items:center;gap:7px;
-    background:none;border:none;
-    padding:7px 4px;
-    cursor:pointer;
-    text-align:left;
-    font-family:inherit;
-    border-radius:3px;
-  }
-  .record-group-header:hover{background:rgba(255,255,255,.04);}
-  .rg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--steel-line);}
-  .rg-dot.done{background:#3fd67a;}
-  .rg-dot.partial{background:var(--amber);}
-  .rg-dot.none{background:var(--steel-line);}
-  .rg-label{font-size:12.5px;font-weight:600;color:var(--off-white);letter-spacing:.02em;white-space:nowrap;}
-  .rg-count{font-size:11px;color:#8f9599;font-weight:500;white-space:nowrap;}
-  .rg-spacer{flex:1;}
-  .rg-dry-mini{font-size:10.5px;font-weight:600;color:#9aa1a6;white-space:nowrap;}
-  .rg-dry-mini.all-done{color:#7fd8c9;}
-  .rg-dry-mini.has-undone{color:#ff9a8f;}
-  .rg-chevron{font-size:9px;color:#6d747a;transition:transform .15s ease;flex-shrink:0;display:inline-block;}
-  .record-group.expanded .rg-chevron{transform:rotate(180deg);}
-  .record-group-body{display:none;flex-direction:column;gap:6px;padding:2px 4px 6px 19px;}
-  .record-group.expanded .record-group-body{display:flex;}
-  .dc-lot-list{
-    background:rgba(255,255,255,.03);
-    border:1px solid var(--steel-line);
+  .readonly-banner{
+    background:var(--amber-bg);
+    border:1px solid #f0d391;
+    color:var(--amber-ink);
+    font-size:12px;
+    line-height:1.6;
+    padding:9px 12px;
     border-radius:6px;
-    padding:8px 9px;
+    margin-bottom:14px;
   }
-  .dc-tooltip-title{
-    font-size:10.5px;color:#9aa1a6;font-weight:600;
-    margin-bottom:7px;padding-bottom:7px;
-    border-bottom:1px solid var(--steel-line);
-    line-height:1.5;
-  }
-  .dc-lot-item{
-    display:flex;align-items:flex-start;gap:4px;
-    padding:5px 2px;
-    border-radius:3px;
-  }
-  .dc-lot-item:hover{background:rgba(255,255,255,.04);}
-  .dc-lot-check{
-    display:flex;align-items:flex-start;gap:7px;
+
+  /* ---------- TABS ---------- */
+  .tabs{display:flex;gap:6px;margin-bottom:22px;border-bottom:1px solid var(--line-soft);overflow-x:auto;}
+  .tab{
+    padding:11px 20px;font-size:14px;font-weight:700;color:var(--muted);
+    border:1px solid transparent;border-bottom:none;
+    border-radius:6px 6px 0 0;
+    margin-bottom:-1px;
     cursor:pointer;
-    flex:1;min-width:0;
-  }
-  .dc-lot-item input[type="checkbox"]{
-    margin-top:2px;width:13px;height:13px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;
-  }
-  .dc-lot-item input[type="checkbox"]:disabled{cursor:not-allowed;}
-  .dc-lot-info{font-size:12px;color:#c7ccd0;line-height:1.4;}
-  .dc-lot-info b{color:var(--off-white);font-weight:600;}
-  .dc-lot-empty{font-size:11.5px;color:#6d747a;padding:4px 2px;line-height:1.6;}
-  .dc-lot-del{
-    background:none;border:none;color:#6d747a;cursor:pointer;
-    font-size:13px;line-height:1;padding:2px 3px;flex-shrink:0;border-radius:3px;
-  }
-  .dc-lot-del:hover{color:var(--danger);}
-  .dc-lot-del:disabled{opacity:.4;cursor:not-allowed;}
-  .device-status-line{
-    display:flex;flex-wrap:wrap;gap:4px 10px;
-    padding:0;
-    text-transform:none;letter-spacing:0;
-  }
-  .device-status-item{font-size:11.5px;font-weight:500;}
-  .device-status-item .dev-name{color:#c7ccd0;margin-right:3px;}
-  .device-status-item .dev-flag{font-weight:700;}
-  .device-status-item .dev-flag.done{color:#3fd67a;}
-  .device-status-item .dev-flag.undone{color:#ff4d4d;}
-  .clean-booth-line{padding:0;text-transform:none;letter-spacing:0;}
-  .clean-booth-badge{
-    display:inline-flex;align-items:center;gap:4px;
-    font-size:10.5px;font-weight:600;
-    padding:3px 8px;border-radius:20px;
-    background:rgba(255,255,255,.06);
-    border:1px solid var(--steel-line);
-    color:#9aa1a6;
+    background:none;
     white-space:nowrap;
+    flex-shrink:0;
   }
-  .clean-booth-badge::before{content:'🧼';font-size:10px;}
-  .clean-booth-badge.used{border-color:var(--amber);color:var(--amber);}
-  .clean-booth-badge.unused{color:#6d747a;}
+  .tab:hover{color:var(--ink);}
+  .tab.active{
+    color:var(--ink);
+    background:#fff;
+    border-color:var(--card-line);
+    border-bottom:1px solid #fff;
+  }
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
 
-  .sidebar-foot{margin-top:auto;font-size:11px;color:#6d747a;line-height:1.6;border-top:1px solid var(--steel-line);padding-top:12px;}
-
-  /* ---------- MAIN ---------- */
-  .main{padding:26px 34px 60px 34px;overflow-x:auto;}
+  /* ---------- toolbar (shared look) ---------- */
   .toolbar{
     display:flex;
     flex-wrap:wrap;
     gap:12px;
     align-items:flex-end;
-    background:var(--steel-2);
-    border:1px solid var(--steel-line);
-    border-radius:4px;
-    padding:18px 20px;
-    margin-bottom:22px;
+    background:var(--off-white);
+    border:1px solid var(--line-soft);
+    border-radius:6px;
+    padding:16px 18px;
+    margin-bottom:20px;
   }
   .tb-field{display:flex;flex-direction:column;gap:5px;}
-  .tb-field label{font-size:11px;color:#9aa1a6;font-weight:500;letter-spacing:.02em;}
+  .tb-field label{font-size:11px;color:var(--ink-soft);font-weight:600;letter-spacing:.02em;}
   .tb-field select, .tb-field input{
-    background:var(--steel-1);
-    border:1px solid var(--steel-line);
-    border-radius:3px;
-    color:var(--off-white);
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:5px;
+    color:var(--ink);
     padding:9px 10px;
     font-size:13.5px;
     min-width:110px;
   }
-  .tb-field input.wide{min-width:170px;}
+  .tb-field input.wide, .tb-field select.wide{min-width:170px;}
   .tb-field .tb-fixed-display{
-    background:var(--steel-1);
-    border:1px solid var(--steel-line);
-    border-radius:3px;
-    color:var(--off-white);
+    background:var(--off-white);
+    border:1px solid var(--line);
+    border-radius:5px;
+    color:var(--ink);
     padding:9px 10px;
     font-size:13.5px;
     min-width:170px;
@@ -392,86 +265,73 @@
     user-select:none;
     cursor:default;
   }
-  .tb-field .tb-fixed-display.is-empty{color:#6d747a;}
+  .tb-field .tb-fixed-display.is-empty{color:var(--muted);}
   .tb-spacer{flex:1;}
   .status-chip{
     font-size:11.5px;
     padding:4px 10px;
     border-radius:20px;
-    border:1px solid var(--steel-line);
-    color:#9aa1a6;
+    border:1px solid var(--line);
+    color:var(--muted);
   }
-  .status-chip.dirty{border-color:var(--amber);color:var(--amber);}
-  .status-chip.saved{border-color:var(--teal);color:#7fd8c9;}
+  .status-chip.dirty{border-color:var(--amber-ink);color:var(--amber-ink);background:var(--amber-bg);}
+  .status-chip.saved{border-color:var(--green);color:var(--green);background:var(--green-bg);}
 
-  /* paper ledger */
+  /* ---------- ledger (기록 작성 표) ---------- */
   .ledger-wrap{
-    background:var(--paper);
-    border-radius:4px;
-    border:1px solid var(--paper-line);
-    box-shadow:0 12px 30px rgba(0,0,0,.35);
+    background:#fff;
+    border-radius:6px;
+    border:1px solid var(--line);
     color:var(--ink);
     overflow:hidden;
   }
   .ledger-title-bar{
-    background:var(--paper-2);
+    background:var(--off-white);
     border-bottom:2px solid var(--ink);
-    padding:18px 22px 14px 22px;
+    padding:16px 20px 12px 20px;
     display:flex;
     justify-content:space-between;
     align-items:flex-end;
     flex-wrap:wrap;
     gap:10px;
   }
-  .ledger-title-bar h2{
-    font-family:'Oswald',sans-serif;
-    font-size:22px;
-    margin:0;
-    letter-spacing:.02em;
-  }
-  .ledger-meta{
-    font-family:'Roboto Mono',monospace;
-    font-size:13px;
-    color:var(--ink-soft);
-  }
+  .ledger-title-bar h2{font-size:19px;margin:0;font-weight:800;letter-spacing:-.01em;}
+  .ledger-meta{font-size:13px;color:var(--ink-soft);font-weight:600;}
   .ledger-info-row{
     display:flex;
-    border-bottom:1px solid var(--paper-line);
+    border-bottom:1px solid var(--line);
     font-size:13px;
   }
   .info-cell{
     padding:9px 14px;
-    border-right:1px solid var(--paper-line);
+    border-right:1px solid var(--line);
     display:flex;
     align-items:center;
     gap:8px;
   }
   .info-cell:last-child{border-right:none;flex:1;}
   .info-cell .lbl{font-weight:700;color:var(--ink-soft);white-space:nowrap;font-size:12px;}
-  .info-cell .val{font-weight:500;}
+  .info-cell .val{font-weight:600;}
 
-  table.grid{
-    width:100%;
-    border-collapse:collapse;
-    font-size:13px;
-  }
+  table.grid{width:100%;border-collapse:collapse;font-size:13px;}
   table.grid thead th{
-    background:var(--ink);
-    color:var(--off-white);
-    font-family:'Oswald',sans-serif;
-    font-weight:500;
-    letter-spacing:.02em;
-    padding:9px 6px;
-    border-right:1px solid #3a342a;
+    background:#fff;
+    color:var(--ink);
+    font-weight:700;
+    letter-spacing:.01em;
+    padding:10px 6px;
+    border-top:2px solid var(--ink);
+    border-bottom:1px solid var(--line);
+    border-right:1px solid var(--line-soft);
     font-size:12.5px;
     position:sticky;top:0;
   }
   table.grid tbody td{
-    border-bottom:1px solid var(--paper-line);
-    border-right:1px solid var(--paper-line);
+    border-bottom:1px solid var(--line-soft);
+    border-right:1px solid var(--line-soft);
     padding:0;
   }
-  table.grid tbody tr:nth-child(even){background:rgba(0,0,0,.02);}
+  table.grid tbody tr:hover{background:#fafbfc;}
   table.grid td input{
     width:100%;
     border:none;
@@ -482,7 +342,7 @@
     outline:none;
     font-family:'Noto Sans KR',sans-serif;
   }
-  table.grid td input:focus{background:rgba(226,161,58,.16);}
+  table.grid td input:focus{background:var(--chip-bg);}
   table.grid td select.cell-select{
     width:100%;
     border:none;
@@ -493,20 +353,20 @@
     outline:none;
     font-family:'Noto Sans KR',sans-serif;
   }
-  table.grid td select.cell-select:focus{background:rgba(226,161,58,.16);}
+  table.grid td select.cell-select:focus{background:var(--chip-bg);}
   td.sign-cell{padding:4px 6px;text-align:center;}
   .sign-btn{
-    border:1px solid var(--teal-dark);
-    background:#eef6f4;
-    color:var(--teal-dark);
+    border:1px solid var(--accent-1);
+    background:var(--chip-bg);
+    color:var(--chip-ink);
     font-size:12px;
-    font-weight:600;
-    padding:5px 10px;
-    border-radius:3px;
+    font-weight:700;
+    padding:5px 11px;
+    border-radius:20px;
     cursor:pointer;
     font-family:'Noto Sans KR',sans-serif;
   }
-  .sign-btn:hover{background:var(--teal);color:#fff;}
+  .sign-btn:hover{background:var(--accent-1);color:#fff;}
   .sign-filled{
     display:inline-flex;
     align-items:center;
@@ -515,52 +375,47 @@
     color:var(--ink);
   }
   .sign-filled .sign-name{
-    font-family:'Oswald',sans-serif;
-    letter-spacing:.01em;
+    background:var(--chip-bg);color:var(--chip-ink);
+    padding:4px 11px;border-radius:20px;font-size:12.5px;
   }
   .sign-filled .sign-cancel{
-    border:none;background:none;color:#a68f6a;cursor:pointer;font-size:12px;padding:0 2px;
+    border:none;background:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 2px;
   }
-  .sign-filled .sign-cancel:hover{color:var(--danger);}
-  .sign-note{
-    font-size:11px;
-    color:var(--ink-soft);
-    font-style:italic;
-  }
-  table.grid td.col-date input, table.grid td.col-time input{font-family:'Roboto Mono',monospace;}
+  .sign-filled .sign-cancel:hover{color:var(--red);}
+  .sign-note{font-size:11px;color:var(--muted);font-style:italic;}
+  .sign-note.readonly-note{color:var(--amber-ink);}
+  table.grid td.col-date input, table.grid td.col-time input{font-variant-numeric:tabular-nums;}
   table.grid td.col-time input{text-align:center;}
   td.col-mfg{padding:0;}
   .mfg-wrap{display:flex;flex-direction:column;}
   .mfg-wrap select.mfg-select{
     width:100%;border:none;background:transparent;
     padding:5px 6px 2px 6px;font-size:11.5px;color:var(--ink-soft);outline:none;
-    font-family:'Noto Sans KR',sans-serif;border-bottom:1px dashed var(--paper-line);
+    font-family:'Noto Sans KR',sans-serif;border-bottom:1px dashed var(--line);
   }
   .mfg-wrap input.mfg-num{
     width:100%;border:none;background:transparent;
     padding:4px 6px 6px 6px;font-size:13px;color:var(--ink);outline:none;
-    font-family:'Roboto Mono',monospace;
+    font-family:'Noto Sans KR',sans-serif;
   }
-  .mfg-wrap select.mfg-select:focus, .mfg-wrap input.mfg-num:focus{background:rgba(226,161,58,.16);}
+  .mfg-wrap select.mfg-select:focus, .mfg-wrap input.mfg-num:focus{background:var(--chip-bg);}
   td.col-del{text-align:center;width:34px;}
-  td.col-del button{
-    border:none;background:none;color:#a68f6a;cursor:pointer;font-size:16px;
-  }
-  td.col-del button:hover{color:var(--danger);}
+  td.col-del button{border:none;background:none;color:var(--muted);cursor:pointer;font-size:16px;}
+  td.col-del button:hover{color:var(--red);}
 
   .grid-actions{
     display:flex;
     justify-content:space-between;
     align-items:center;
     padding:10px 14px;
-    background:var(--paper-2);
-    border-top:1px solid var(--paper-line);
+    background:var(--off-white);
+    border-top:1px solid var(--line);
     flex-wrap:wrap;
     gap:10px;
   }
   .grid-actions .left-actions{display:flex;gap:8px;}
   .link-btn{
-    background:none;border:none;color:var(--teal-dark);font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:underline;
+    background:none;border:none;color:var(--accent-1);font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:underline;
   }
 
   .footer-block{
@@ -568,25 +423,21 @@
     grid-template-columns:1.4fr .8fr .8fr;
     border-top:2px solid var(--ink);
   }
-  .footer-cell{
-    border-right:1px solid var(--paper-line);
-    padding:10px 14px 14px 14px;
-  }
+  .footer-cell{border-right:1px solid var(--line);padding:10px 14px 14px 14px;}
   .footer-cell:last-child{border-right:none;}
   .footer-label{
-    font-family:'Oswald',sans-serif;
     font-size:12px;
     color:var(--ink-soft);
-    letter-spacing:.05em;
+    letter-spacing:.03em;
     margin-bottom:6px;
-    text-transform:uppercase;
+    font-weight:700;
   }
   .footer-cell textarea{
     width:100%;
     min-height:64px;
-    border:1px solid var(--paper-line);
-    background:#fffdf7;
-    border-radius:3px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:5px;
     padding:8px;
     font-size:13px;
     resize:vertical;
@@ -596,9 +447,9 @@
   .sign-box{
     position:relative;
     min-height:64px;
-    border:1px solid var(--paper-line);
-    background:#fffdf7;
-    border-radius:3px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:5px;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -608,14 +459,13 @@
     position:absolute;
     right:8px;
     bottom:6px;
-    width:40px;height:40px;
-    border:2.5px solid var(--stamp);
+    width:38px;height:38px;
+    border:2.5px solid var(--red);
     border-radius:50%;
-    color:var(--stamp);
+    color:var(--red);
     display:flex;
     align-items:center;
     justify-content:center;
-    font-family:'Oswald',sans-serif;
     font-size:11px;
     font-weight:700;
     transform:rotate(-14deg);
@@ -628,49 +478,104 @@
     left:8px;
     bottom:6px;
     font-size:10.5px;
-    color:#8a7f66;
-    font-family:'Noto Sans KR',sans-serif;
+    color:var(--muted);
     pointer-events:none;
   }
+  .storage-note{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.6;}
 
-  .storage-note{
-    font-size:11.5px;
-    color:#6d747a;
-    margin-top:10px;
-    line-height:1.6;
+  /* ---------- 저장된 기록 (list panel) ---------- */
+  .list-toolbar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-bottom:16px;
   }
+  .list-toolbar select, .list-toolbar input{
+    font-size:13.5px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    color:var(--ink);
+    background:#fff;
+  }
+  .list-toolbar input{flex:1;max-width:260px;min-width:160px;}
+  .list-toolbar select{min-width:120px;}
+  .list-count{font-size:12px;color:var(--muted);margin-bottom:10px;}
+
+  .table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;}
+  table.plain{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px;}
+  table.plain thead th{
+    text-align:center;
+    padding:11px 8px;
+    border-top:2px solid var(--ink);
+    border-bottom:1px solid var(--line);
+    font-weight:700;
+    color:var(--ink);
+    white-space:nowrap;
+    background:var(--off-white);
+  }
+  table.plain tbody td{
+    text-align:center;
+    padding:10px 8px;
+    border-bottom:1px solid var(--line-soft);
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  table.plain tbody tr:hover{background:#fafbfc;}
+  table.plain tbody td.empty-note{
+    white-space:normal;text-align:left;color:var(--muted);padding:22px 14px;font-size:12.5px;line-height:1.7;
+  }
+
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px;}
+  .badge.done{background:var(--green-bg);color:var(--green);}
+  .badge.partial{background:var(--amber-bg);color:var(--amber-ink);}
+  .badge.none{background:var(--red-bg);color:var(--red);}
+
+  .row-actions{display:flex;gap:6px;justify-content:center;}
+  .mini-btn{font-size:12px;padding:5px 11px;border-radius:4px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;}
+  .mini-btn:hover{background:var(--off-white);}
+  .mini-btn.del{background:var(--red-bg);border-color:#f3c9c9;color:var(--red);}
+  .mini-btn.del:hover{background:#f6d5d5;}
+
+  /* ---------- 월별 엑셀 내보내기 panel ---------- */
+  .export-panel-inner{max-width:640px;}
+  .export-panel-inner .toolbar{margin-bottom:22px;}
+  .export-note{font-size:12.5px;color:var(--ink-soft);line-height:1.7;margin-bottom:18px;background:var(--off-white);border:1px solid var(--line-soft);border-radius:6px;padding:12px 14px;}
+  .export-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn-excel{background:var(--green);color:#fff;border:none;font-weight:700;font-size:13.5px;padding:12px 22px;border-radius:5px;cursor:pointer;}
+  .btn-excel:hover{filter:brightness(1.08);}
+  .btn-excel:disabled{opacity:.5;cursor:not-allowed;}
+
+  input:disabled, select:disabled, textarea:disabled,
+  input[readonly], textarea[readonly]{opacity:.6;cursor:not-allowed;}
 
   .toast{
     position:fixed;
     bottom:24px;
     left:50%;
     transform:translateX(-50%) translateY(20px);
-    background:var(--teal);
-    color:#eef6f4;
+    background:var(--ink);
+    color:#fff;
     padding:11px 20px;
-    border-radius:4px;
+    border-radius:6px;
     font-size:13.5px;
     font-weight:600;
-    box-shadow:0 10px 26px rgba(0,0,0,.35);
+    box-shadow:0 10px 26px rgba(0,0,0,.25);
     opacity:0;
     pointer-events:none;
     transition:all .25s ease;
     z-index:100;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .toast.error{background:var(--danger);}
+  .toast.error{background:var(--red);}
 
   @media (max-width:880px){
-    #app-screen.active{grid-template-columns:1fr;}
-    .sidebar{border-right:none;border-bottom:1px solid var(--steel-line);}
-    .main{padding:20px 16px 60px 16px;}
+    .app-wrap{padding:18px 12px 50px 12px;}
+    .card{padding:18px 16px 24px 16px;}
     .footer-block{grid-template-columns:1fr;}
+    .tabs{overflow-x:auto;}
   }
 </style>
 </head>
 <body>
-
-<div class="hazard-strip"></div>
 
 <!-- ===================== LOGIN ===================== -->
 <div id="login-screen">
@@ -701,76 +606,114 @@
 
 <!-- ===================== APP ===================== -->
 <div id="app-screen">
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">기</div>
-      <div class="brand-text">
-        <div class="t1">기기가동 기록서</div>
-        <div class="t2">현장 데이터 관리</div>
-      </div>
+  <div class="app-wrap">
+    <div class="topbar">
+      <span class="mode-badge" id="mode-badge"></span>
+      <span class="who">👤 <b id="current-user-label"></b>님</span>
+      <button class="btn btn-danger" id="logout-btn">로그아웃</button>
     </div>
 
-    <div class="user-pill">
-      <span>👤 <b id="current-user-label"></b></span>
-      <a id="logout-btn">로그아웃</a>
-    </div>
-    <div class="readonly-banner" id="readonly-banner" style="display:none;"></div>
+    <div class="card">
+      <div class="brand-row">
+        <div class="brand-mark">기</div>
+        <div>
+          <h1>기기가동 기록서</h1>
+          <div class="sub">현장 데이터 관리</div>
+        </div>
+      </div>
 
-    <div>
-      <div class="side-section-label" style="margin-bottom:8px;">
-        <span>저장된 기록 <span id="record-total-count" style="font-weight:600;color:#c0392b;"></span></span>
+      <div class="readonly-banner" id="readonly-banner" style="display:none;"></div>
+
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="write">월별기기가동생성</button>
+        <button type="button" class="tab" data-tab="list">저장된 기록</button>
+        <button type="button" class="tab" data-tab="export">월별 엑셀 내보내기</button>
       </div>
-      <div class="record-search" style="display:flex;gap:6px;margin-bottom:8px;">
-        <select id="record-filter-year" style="flex:1;padding:6px 8px;background:var(--steel-1);border:1px solid var(--steel-line);border-radius:3px;color:var(--off-white);font-size:12.5px;"></select>
-        <select id="record-filter-month" style="flex:1;padding:6px 8px;background:var(--steel-1);border:1px solid var(--steel-line);border-radius:3px;color:var(--off-white);font-size:12.5px;"></select>
+
+      <!-- ---------- 월별기기가동생성 (기록 작성) ---------- -->
+      <div class="tab-panel active" id="panel-write">
+        <div class="toolbar">
+          <div class="tb-field">
+            <label>년도</label>
+            <select id="sel-year"></select>
+          </div>
+          <div class="tb-field">
+            <label>월</label>
+            <select id="sel-month"></select>
+          </div>
+          <button class="btn btn-primary" id="save-btn" style="display:none;">저장하기</button>
+          <button class="btn btn-ghost" id="gen-selected-month-btn">🗓️ 선택한 연월로 기기가동 생성</button>
+          <div class="tb-spacer"></div>
+        </div>
+
+        <!-- 이 필드들은 화면에는 더 이상 표시하지 않지만, 기록을 불러왔을 때(openSheet)
+             품목/기기/설치장소 값을 채우고 저장 시(save-btn) 그 값을 그대로 다시 읽어가는
+             내부 로직이 남아있어 DOM에서 완전히 지우지 않고 숨김 처리만 한다.
+             (품목/기기 정보는 표 위 "품목명/기기명/설치장소" 안내줄과 "저장된 기록" 표에서
+             이미 보여주므로 툴바에 중복 표시할 필요가 없어졌다) -->
+        <div style="display:none;">
+          <select id="sel-product"></select>
+          <select id="sel-device"></select>
+          <div id="sel-location-fixed" data-placeholder="기기 선택 시 자동">기기 선택 시 자동</div>
+          <span class="status-chip" id="status-chip">기록을 불러오세요</span>
+        </div>
+
+        <div class="readonly-banner" id="sheet-lock-banner" style="display:none;"></div>
+
+        <div id="ledger-area"></div>
       </div>
-      <div class="record-search">
-        <input type="text" id="record-search-input" placeholder="기기명, 설치장소 검색">
+
+      <!-- ---------- 저장된 기록 ---------- -->
+      <div class="tab-panel" id="panel-list">
+        <div class="list-toolbar">
+          <select id="record-filter-year"></select>
+          <select id="record-filter-month"></select>
+          <select id="record-filter-product"></select>
+          <input type="text" id="record-search-input" placeholder="기기명, 설치장소 검색">
+        </div>
+        <div class="list-count">저장된 기록 <span id="record-total-count"></span></div>
+        <div class="table-scroll">
+          <table class="plain">
+            <thead>
+              <tr>
+                <th>No</th><th>품목명</th><th>기기명</th><th>설치장소</th><th>년월</th>
+                <th>작성상태</th><th>담당자</th><th>승인자</th><th>최근 수정</th><th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="record-table-body"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="record-list" id="record-list"></div>
+
+      <!-- ---------- 월별 엑셀 내보내기 ---------- -->
+      <div class="tab-panel" id="panel-export">
+        <div class="export-panel-inner">
+          <div class="toolbar">
+            <div class="tb-field">
+              <label>년도</label>
+              <select id="xls-year"></select>
+            </div>
+            <div class="tb-field">
+              <label>월</label>
+              <select id="xls-month"></select>
+            </div>
+          </div>
+          <div class="export-note">
+            선택한 연월 기준으로, 정식 7가지 품목에 속한 모든 기기의 기기가동 기록(작성된 기록은 그대로, 미작성 기기는 빈 양식)을 품목별 엑셀 파일로 저장합니다.<br>
+            아직 만들어지지 않은 기록을 미리 생성하려면 "월별기기가동생성" 탭의 "🗓️ 선택한 연월로 기기가동 생성" 버튼을 이용하세요 (그 탭의 년도/월 기준으로 생성됩니다).
+          </div>
+          <div class="export-actions">
+            <button class="btn-excel" id="prev-month-save-btn">📊 엑셀로 내보내기</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
-    <div class="sidebar-foot" id="sidebar-foot-note">
+    <div class="storage-note" id="sidebar-foot-note">
       데이터는 이 앱을 사용하는 모든 사용자에게 공유됩니다. 같은 현장/팀에서 함께 사용하는 공용 저장소입니다.
     </div>
-  </aside>
-
-  <main class="main">
-    <div class="toolbar">
-      <div class="tb-field">
-        <label>년도</label>
-        <select id="sel-year"></select>
-      </div>
-      <div class="tb-field">
-        <label>월</label>
-        <select id="sel-month"></select>
-      </div>
-      <div class="tb-field">
-        <label>품목명</label>
-        <select id="sel-product" class="wide"></select>
-      </div>
-      <div class="tb-field">
-        <label>기기명</label>
-        <select id="sel-device" class="wide"></select>
-      </div>
-      <div class="tb-field">
-        <label>설치장소</label>
-        <div id="sel-location-fixed" class="wide tb-fixed-display is-empty" data-placeholder="기기 선택 시 자동">기기 선택 시 자동</div>
-      </div>
-      <button class="btn btn-teal" id="load-btn">불러오기</button>
-      <button class="btn btn-ghost" id="gen-selected-month-btn">🗓️ 선택한 연월로 기기가동 생성</button>
-      <button class="btn btn-primary" id="save-btn" style="display:none;">저장하기</button>
-      <button class="btn btn-ghost" id="prev-month-save-btn">📊 엑셀저장</button>
-      <div class="tb-spacer"></div>
-      <span class="status-chip" id="status-chip">기록을 불러오세요</span>
-      <span class="mode-badge" id="mode-badge"></span>
-    </div>
-
-    <div class="readonly-banner" id="sheet-lock-banner" style="display:none;"></div>
-
-    <div id="ledger-area"></div>
-
-  </main>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -783,14 +726,15 @@
    2. 기기·품목 참조 데이터    : 기기코드/품목코드/설치장소/공정/사용자 매핑
    3. STORAGE LAYER          : Firebase(공유 DB) ↔ localStorage(백업) 저장소
    4. 로그인 / 세션            : LOGIN, SESSION, ENTER APP
-   5. 사이드바 UI              : RECORD LIST(저장된 기록 목록), 건조실청소
-                                일지 체크, 클린부스 표시, 기기별 작성현황
+   5. 저장된 기록 탭 / 탭 전환   : RECORD TABLE(전체 기록 표), TAB SWITCHING
    6. 기록서 UI                : LOAD/CREATE SHEET, LEDGER RENDER(표 전체),
                                 서명칸 공통 렌더러 + 담당자/승인자/작업자/확인자
    7. 저장                    : SAVE(수정 사유 확인 포함)
    8. 엑셀 내보내기            : 원본 서식 그대로 유지되는 xlsx 생성, 빈칸 사선표시,
                                 여러 기기를 시트로 묶은 워크북 생성
-   9. 일괄 기능                : 선택한 연월로 기록 생성, 월별 일괄 저장(내보내기)
+   9. 일괄 기능                : 선택한 연월로 기록 생성("기록 작성" 탭, sel-year/sel-month 기준),
+                                월별 일괄 저장/내보내기("월별 엑셀 내보내기" 탭 전용 년/월 선택
+                                xls-year/xls-month 기준)
    10. BOOTSTRAP              : 앱 시작
    ============================================================================ */
 
@@ -1277,66 +1221,6 @@ async function saveUsers(list){
   await stSet('users', JSON.stringify(list), true);
 }
 
-/* ============================================================
-   건조실청소일지 작성 확인 체크 (품목코드별 · 선택한 년/월 기준)
-   - 사이드바 각 품목코드(그룹) 헤더 옆에 체크박스로 표시.
-   - 모든 사용자가 공유하는 저장소에 저장됨(shared=true).
-============================================================ */
-let dryRoomCleanLog = {};
-// 사이드바에서 어떤 품목 그룹이 펼쳐져 있는지 기억 (목록이 다시 그려져도 유지)
-const expandedGroups = new Set();
-function dryRoomCleanKey(product, year, month){
-  return `${product || '__none__'}_${year}${String(month).padStart(2,'0')}`;
-}
-async function loadDryRoomLog(){
-  const r = await stGet('dry-room-clean-log', true);
-  try{ dryRoomCleanLog = r ? JSON.parse(r.value) : {}; }catch(e){ dryRoomCleanLog = {}; }
-}
-async function saveDryRoomLog(){
-  await stSet('dry-room-clean-log', JSON.stringify(dryRoomCleanLog), true);
-}
-
-// 해당 품목그룹의 건조기(VD-xxx) 기록에서, 제조번호(로트번호)가 이전 행과
-// 달라지는 시점마다 하나의 "로트 변경 이벤트"로 뽑아낸다.
-// (건조실은 로트가 바뀔 때마다 청소일지를 새로 작성해야 하므로, 그 시점마다
-//  작성 여부를 따로 체크할 수 있게 하기 위함)
-//
-// [성능] 이 계산은 기기별로 Firebase 문서를 하나씩 읽어온다. 예전에는
-// renderRecordList()가 검색어를 한 글자 칠 때마다·연월을 바꿀 때마다
-// 매번 이걸 처음부터 다시 돌려서, 그때마다 다시 서버까지 왕복하느라
-// 타이핑이 버벅였다(=GitHub에 올려 여럿이 쓸 때 느껴지던 "렉"의 주범).
-// 실제 기록이 저장/삭제/생성되기 전까지는 같은 연월의 결과가 달라지지
-// 않으므로, (품목,연,월) 단위로 한 번 계산한 결과를 캐시해두고 재사용한다.
-const groupLotsCache = new Map();
-function groupLotsCacheKey(productKey, year, month){ return `${productKey}::${year}::${month}`; }
-function invalidateGroupLotsCache(){ groupLotsCache.clear(); }
-
-async function computeGroupLots(productKey, year, month){
-  const cacheKey = groupLotsCacheKey(productKey, year, month);
-  if(groupLotsCache.has(cacheKey)) return groupLotsCache.get(cacheKey);
-
-  const devices = (BASE_TO_DEVICES[productKey] || []).filter(d => /^VD-/.test(d));
-  const lots = [];
-  for(const device of devices){
-    const meta = sheetIndex.find(s => s.year===year && s.month===month && s.device===device);
-    if(!meta) continue;
-    const data = await loadSheetById(meta.id);
-    if(!data || !Array.isArray(data.rows)) continue;
-    let prev = '';
-    let occ = 0;
-    data.rows.forEach(r=>{
-      const v = String((r && r.mfgNo) || '').trim();
-      if(v && v !== prev){
-        occ++;
-        lots.push({ device, mfgNo: v, date: String((r && r.date)||'').trim(), eventKey: `${device}__${v}__${occ}` });
-      }
-      if(v) prev = v;
-    });
-  }
-  groupLotsCache.set(cacheKey, lots);
-  return lots;
-}
-
 async function loadSheetIndex(){
   const r = await stGet('sheet-index', true);
   try{ sheetIndex = r ? JSON.parse(r.value) : []; }catch(e){ sheetIndex = []; }
@@ -1616,7 +1500,6 @@ async function enterApp(){
   populateYearMonth();
   populateDeviceLocation();
   await loadSheetIndex();
-  await loadDryRoomLog();
   renderRecordList();
 }
 
@@ -1675,27 +1558,37 @@ function fillDeviceOptions(productCode){
 function populateYearMonth(){
   const ySel = document.getElementById('sel-year');
   const mSel = document.getElementById('sel-month');
+  const xySel = document.getElementById('xls-year');
+  const xmSel = document.getElementById('xls-month');
   const now = new Date();
   const thisYear = now.getFullYear();
-  ySel.innerHTML='';
-  for(let y=thisYear-2; y<=thisYear+1; y++){
-    const opt = document.createElement('option');
-    opt.value=y; opt.textContent=y+'년';
-    if(y===thisYear) opt.selected=true;
-    ySel.appendChild(opt);
-  }
-  mSel.innerHTML='';
-  for(let m=1;m<=12;m++){
-    const opt = document.createElement('option');
-    opt.value=m; opt.textContent=m+'월';
-    if(m===now.getMonth()+1) opt.selected=true;
-    mSel.appendChild(opt);
-  }
 
-  // 사이드바 "저장된 기록" 목록을 연도/월별로 필터링하기 위한 셀렉트
-  // (기본값은 "전체" — 모든 연월의 기록을 함께 보여줌)
+  [ySel, xySel].forEach(sel=>{
+    if(!sel) return;
+    sel.innerHTML='';
+    for(let y=thisYear-2; y<=thisYear+1; y++){
+      const opt = document.createElement('option');
+      opt.value=y; opt.textContent=y+'년';
+      if(y===thisYear) opt.selected=true;
+      sel.appendChild(opt);
+    }
+  });
+  [mSel, xmSel].forEach(sel=>{
+    if(!sel) return;
+    sel.innerHTML='';
+    for(let m=1;m<=12;m++){
+      const opt = document.createElement('option');
+      opt.value=m; opt.textContent=m+'월';
+      if(m===now.getMonth()+1) opt.selected=true;
+      sel.appendChild(opt);
+    }
+  });
+
+  // "저장된 기록" 탭의 목록을 연도/월/품목별로 필터링하기 위한 셀렉트
+  // (기본값은 "전체" — 모든 연월/품목의 기록을 함께 보여줌)
   const fySel = document.getElementById('record-filter-year');
   const fmSel = document.getElementById('record-filter-month');
+  const fpSel = document.getElementById('record-filter-product');
   if(fySel){
     fySel.innerHTML = '<option value="">연도: 전체</option>' +
       Array.from({length:4}, (_,i)=>thisYear-2+i).map(y=>`<option value="${y}">${y}년</option>`).join('');
@@ -1704,102 +1597,41 @@ function populateYearMonth(){
     fmSel.innerHTML = '<option value="">월: 전체</option>' +
       Array.from({length:12}, (_,i)=>i+1).map(m=>`<option value="${m}">${m}월</option>`).join('');
   }
-}
-
-/* ============================================================
-   기기별 작성 여부 표시 (RS-302 / RG-203 / 여과기 / 건조기 등)
-   - 상단 툴바에서 선택된 년/월을 기준으로, 해당 품목 그룹에 속한
-     기기들이 그 달 기록을 작성했는지(작성함) 안 했는지(미작성) 판단해
-     빨간 글씨로 보여준다.
-============================================================ */
-// 기기명을 표시용 라벨로 변환: 반응기(RS/RG)는 기기 코드 그대로,
-// 여과기(NF)는 "여과기", 건조기(VD)는 "건조기"로 표시
-function deviceDisplayLabel(device){
-  if(/^NF-/.test(device||'')) return '여과기';
-  if(/^VD-/.test(device||'')) return '건조기';
-  return device || '';
-}
-
-// 품목그룹에 속한 기기들이 지정한 연/월에 작성됐는지 계산해서
-// [{device, approved, done}, ...] 형태로 반환. deviceStatusLineHtml과 사이드바
-// 상태점(dot) 계산이 같은 로직을 공유하도록 한 곳으로 모았다.
-// 승인자가 서명된 기록은 별도 보관함으로 옮기지 않고 sheetIndex meta의
-// approver 필드로만 표시한다 (activeRecord 그대로, 승인 여부만 다르게 보임).
-function computeDeviceDoneList(productKey, year, month){
-  const devices = BASE_TO_DEVICES[productKey];
-  if(!devices || !devices.length) return [];
-  if(!year || !month) return [];
-  const metaByDevice = new Map(
-    sheetIndex
-      .filter(s => s.year === year && s.month === month && s.product === productKey)
-      .map(s => [s.device, s])
-  );
-  return devices.map(dv => {
-    const meta = metaByDevice.get(dv);
-    const approved = !!(meta && meta.approver);
-    const written = !!(meta && meta.hasData);
-    return { device: dv, approved, done: written || approved };
-  });
-}
-
-// 사이드바 그룹 헤더의 상태점(dot) 색을 정하기 위한 요약 상태.
-// 상단 툴바에서 선택된 연/월 기준으로 판단한다.
-// 'done'(전부 작성) / 'partial'(일부만 작성) / 'none'(작성 없음 또는 해당 기기 없음)
-function computeGroupDotState(productKey, year, month){
-  const list = computeDeviceDoneList(productKey, year, month);
-  if(!list.length) return 'none';
-  const doneCount = list.filter(d=>d.done).length;
-  if(doneCount === 0) return 'none';
-  if(doneCount === list.length) return 'done';
-  return 'partial';
-}
-
-function deviceStatusLineHtml(productKey, year, month){
-  const list = computeDeviceDoneList(productKey, year, month);
-  if(!list.length) return '';
-  const items = list.map(({device, approved, done})=>{
-    const label = approved ? '승인완료' : (done ? '작성함' : '미작성');
-    return `<span class="device-status-item">
-      <span class="dev-name">${escapeHtml(deviceDisplayLabel(device))}</span><span class="dev-flag ${done ? 'done' : 'undone'}">${label}</span>
-    </span>`;
-  }).join('');
-  return `<div class="device-status-line">${items}</div>`;
-}
-
-/* ============================================================
-   클린부스 사용 여부 표시 (품목코드 기준)
-   - 1층 클린부스 사용: O0330, O0711, G0720, O0731
-   - 2층 클린부스 사용: LX0566
-   - 그 외 전체: 클린부스 미사용
-============================================================ */
-const CLEAN_BOOTH_1F_PRODUCTS = ['O0330','O0711','G0720','O0731'];
-const CLEAN_BOOTH_2F_PRODUCTS = ['LX0566'];
-
-function cleanBoothLineHtml(productKey){
-  let label, cls;
-  if(CLEAN_BOOTH_1F_PRODUCTS.includes(productKey)){
-    label = '클린부스 사용 (1층)';
-    cls = 'used';
-  }else if(CLEAN_BOOTH_2F_PRODUCTS.includes(productKey)){
-    label = '클린부스 사용 (2층)';
-    cls = 'used';
-  }else{
-    label = '클린부스 미사용';
-    cls = 'unused';
+  if(fpSel){
+    fpSel.innerHTML = '<option value="">전체 품목</option>' +
+      BASE_PRODUCTS.map(c=>`<option value="${c}">${c}</option>`).join('');
   }
-  return `<div class="clean-booth-line"><span class="clean-booth-badge ${cls}">${label}</span></div>`;
 }
 
 /* ============================================================
-   RECORD LIST (sidebar)
+   RECORD TABLE ("저장된 기록" 탭)
+   - 모든 기기 × 연월 기록을 표 한 장으로 보여준다. sheetIndex meta에
+     이미 담당자/승인자/작성여부/최근수정 값이 들어 있으므로, 표를 그릴
+     때 시트 데이터를 추가로 읽어오지 않는다 (Firestore 재조회로 인한
+     렉을 다시 만들지 않기 위함 — 상세 원인은 파일 상단 설명 참고).
 ============================================================ */
+function recordStatusInfo(meta){
+  if(!meta.hasData) return { cls:'none', label:'미작성' };
+  if(meta.manager) return { cls:'done', label:'작성완료' };
+  return { cls:'partial', label:'일부작성' };
+}
+
+function formatUpdatedAt(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '-';
+  const pad = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 async function renderRecordList(filter){
-  const list = document.getElementById('record-list');
+  const tbody = document.getElementById('record-table-body');
   const countEl = document.getElementById('record-total-count');
   filter = (filter||'').toLowerCase();
 
   const fyRaw = document.getElementById('record-filter-year').value;
   const fmRaw = document.getElementById('record-filter-month').value;
+  const fpRaw = document.getElementById('record-filter-product').value;
   const fYear = fyRaw ? parseInt(fyRaw,10) : null;
   const fMonth = fmRaw ? parseInt(fmRaw,10) : null;
 
@@ -1807,9 +1639,14 @@ async function renderRecordList(filter){
     .filter(s => !filter || (s.device||'').toLowerCase().includes(filter) || (s.location||'').toLowerCase().includes(filter))
     .filter(s => fYear===null || s.year===fYear)
     .filter(s => fMonth===null || s.month===fMonth)
-    .sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+    .filter(s => !fpRaw || s.product===fpRaw)
+    .sort((a,b)=>{
+      const pa = BASE_PRODUCTS.indexOf(a.product), pb = BASE_PRODUCTS.indexOf(b.product);
+      if(pa !== pb) return (pa===-1?999:pa) - (pb===-1?999:pb);
+      return (b.updatedAt||'').localeCompare(a.updatedAt||'');
+    });
 
-  const filterActive = !!filter || fYear!==null || fMonth!==null;
+  const filterActive = !!filter || fYear!==null || fMonth!==null || !!fpRaw;
   if(countEl){
     countEl.textContent = filterActive
       ? `(조회결과 ${items.length}건 / 전체 ${sheetIndex.length}건)`
@@ -1817,112 +1654,40 @@ async function renderRecordList(filter){
   }
 
   if(items.length===0){
-    list.innerHTML = filterActive
-      ? `<div class="empty-note">조건에 맞는 저장된 기록이 없습니다.</div>`
-      : `<div class="empty-note">저장된 기록이 없습니다. 상단에서 년/월과 기기 정보를 입력하고 "불러오기"를 눌러 시작하세요.</div>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-note">${filterActive
+      ? '조건에 맞는 저장된 기록이 없습니다.'
+      : '저장된 기록이 없습니다. "월별기기가동생성" 탭에서 년/월을 고르고 "🗓️ 선택한 연월로 기기가동 생성" 버튼을 눌러 시작하세요.'
+    }</td></tr>`;
     return;
   }
 
-  // 품목코드(카테고리)별로 묶기 - BASE_PRODUCTS 순서대로 먼저, 그 외 코드는 뒤에, 미지정은 맨 뒤
-  const groupsMap = new Map();
-  items.forEach(s=>{
-    const key = s.product || '';
-    if(!groupsMap.has(key)) groupsMap.set(key, []);
-    groupsMap.get(key).push(s);
-  });
-  const knownOrder = BASE_PRODUCTS.filter(c=>groupsMap.has(c));
-  const otherOrder = [...groupsMap.keys()].filter(c=>c && !BASE_PRODUCTS.includes(c)).sort();
-  const orderedKeys = [...knownOrder, ...otherOrder, ...(groupsMap.has('')?['']:[])];
-
-  // 기기별 작성 현황·건조실청소 체크리스트는 상단 툴바에서 선택된 연/월 기준으로 계산한다.
-  const dcSelYear = parseInt(document.getElementById('sel-year').value, 10);
-  const dcSelMonth = parseInt(document.getElementById('sel-month').value, 10);
-
-  const groupLotsMap = new Map();
-  for(const key of orderedKeys){
-    groupLotsMap.set(key, await computeGroupLots(key, dcSelYear, dcSelMonth));
-  }
-
-  list.innerHTML = orderedKeys.map(key=>{
-    // 그룹 내부는 대표 품목의 기기 순서(반응기 → 여과기 → 건조기, BASE_TO_DEVICES 순서)대로 정렬하고,
-    // 같은 기기 안에서는 최근 수정된 기록이 위로 오도록 함
-    const deviceOrder = BASE_TO_DEVICES[key] || [];
-    const groupItems = groupsMap.get(key).slice().sort((a,b)=>{
-      let ai = deviceOrder.indexOf(a.device); if(ai===-1) ai = deviceOrder.length;
-      let bi = deviceOrder.indexOf(b.device); if(bi===-1) bi = deviceOrder.length;
-      if(ai !== bi) return ai - bi;
-      return (b.updatedAt||'').localeCompare(a.updatedAt||'');
-    });
-    const label = key ? escapeHtml(key) : '품목코드 미지정';
-
-    const lots = groupLotsMap.get(key) || [];
-    const dcPrefix = dryRoomCleanKey(key, dcSelYear, dcSelMonth);
-    const doneCount = lots.filter(l => dryRoomCleanLog[dcPrefix+'::'+l.eventKey]).length;
-    const totalCount = lots.length;
-    const dryMiniText = totalCount ? `💧${doneCount}/${totalCount}` : '💧–';
-    const dryMiniClass = totalCount===0 ? '' : (doneCount===totalCount ? ' all-done' : ' has-undone');
-    const tooltipItemsHtml = lots.length ? lots.map(l=>{
-      const checked = !!dryRoomCleanLog[dcPrefix+'::'+l.eventKey];
-      return `<div class="dc-lot-item">
-        <label class="dc-lot-check">
-          <input type="checkbox" class="dc-lot-checkbox" data-eventkey="${escapeHtml(l.eventKey)}" data-product="${escapeHtml(key)}" ${checked?'checked':''} ${isReadOnly?'disabled':''}>
-          <span class="dc-lot-info"><b>${escapeHtml(l.mfgNo)}</b>${l.date?` · ${escapeHtml(l.date)}`:''}${checked?' · 작성함':' · 미작성'}</span>
-        </label>
-        ${checked ? `<button type="button" class="dc-lot-del" data-eventkey="${escapeHtml(l.eventKey)}" data-product="${escapeHtml(key)}" title="작성 체크 삭제" ${isReadOnly?'disabled':''}>✕</button>` : ''}
-      </div>`;
-    }).join('') : `<div class="dc-lot-empty">상단 툴바에서 선택한 연월 기준, 건조기 기록에 제조번호(로트)가 아직 입력되지 않았습니다.</div>`;
-
-    // 헤더 상태점은 상단 툴바에서 선택된 연/월 기준으로 판단 (지금 잘 챙기고 있는지 한눈에)
-    const dotState = computeGroupDotState(key, dcSelYear, dcSelMonth);
-
-    const isExpanded = expandedGroups.has(key);
-
+  tbody.innerHTML = items.map((s,i)=>{
+    const status = recordStatusInfo(s);
     return `
-    <div class="record-group${isExpanded ? ' expanded' : ''}" data-group-key="${escapeHtml(key)}">
-      <button type="button" class="record-group-header" data-group-toggle="${escapeHtml(key)}">
-        <span class="rg-dot ${dotState}" title="${dotState==='done'?'선택한 연월 전체 작성 완료':dotState==='partial'?'선택한 연월 일부만 작성됨':'선택한 연월 기록 없음'}"></span>
-        <span class="rg-label">${label}</span>
-        <span class="rg-count">${groupItems.length}건</span>
-        <span class="rg-spacer"></span>
-        <span class="rg-dry-mini${dryMiniClass}" title="선택한 연월의 건조실청소일지 작성 진행률">${dryMiniText}</span>
-        <span class="rg-chevron">▾</span>
-      </button>
-      <div class="record-group-body">
-        ${cleanBoothLineHtml(key)}
-        ${deviceStatusLineHtml(key, dcSelYear, dcSelMonth)}
-        <div class="dc-lot-list">
-          <div class="dc-tooltip-title">건조실청소일지 작성현황<br>(로트번호가 바뀔 때마다 작성 확인)</div>
-          ${tooltipItemsHtml}
-        </div>
-        ${groupItems.map(s=>`
-          <div class="record-item ${s.id===currentSheetId?'active':''}" data-id="${s.id}">
-            <div class="ri-main">
-              <b>${escapeHtml(s.device)||'(기기명 미입력)'}</b>
-              <span>${s.year}년 ${s.month}월 · ${escapeHtml(s.location)||'-'}</span>
-            </div>
-            <button class="ri-del" data-del="${s.id}" title="삭제">✕</button>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
+      <tr data-id="${s.id}">
+        <td>${i+1}</td>
+        <td>${escapeHtml(s.product)||'-'}</td>
+        <td>${escapeHtml(s.device)||'(기기명 미입력)'}</td>
+        <td>${escapeHtml(s.location)||'-'}</td>
+        <td>${s.year}-${String(s.month).padStart(2,'0')}</td>
+        <td><span class="badge ${status.cls}">${status.label}</span></td>
+        <td>${s.manager ? escapeHtml(displayName(s.manager)) : '-'}</td>
+        <td>${s.approver ? escapeHtml(displayName(s.approver)) : '-'}</td>
+        <td>${formatUpdatedAt(s.updatedAt)}</td>
+        <td class="row-actions">
+          <button type="button" class="mini-btn" data-edit="${s.id}">수정</button>
+          <button type="button" class="mini-btn del" data-del="${s.id}">삭제</button>
+        </td>
+      </tr>`;
   }).join('');
 
-  list.querySelectorAll('[data-group-toggle]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const key = btn.dataset.groupToggle;
-      const groupEl = btn.closest('.record-group');
-      const nowExpanded = groupEl.classList.toggle('expanded');
-      if(nowExpanded) expandedGroups.add(key); else expandedGroups.delete(key);
+  tbody.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await openSheet(btn.dataset.edit);
+      switchTab('write');
     });
   });
-
-  list.querySelectorAll('.record-item').forEach(el=>{
-    el.addEventListener('click', (e)=>{
-      if(e.target.dataset.del) return;
-      openSheet(el.dataset.id);
-    });
-  });
-  list.querySelectorAll('[data-del]').forEach(btn=>{
+  tbody.querySelectorAll('[data-del]').forEach(btn=>{
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
       if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
@@ -1932,7 +1697,6 @@ async function renderRecordList(filter){
       await deleteSheetById(id);
       sheetIndex = sheetIndex.filter(s=>s.id!==id);
       await saveSheetIndex();
-      invalidateGroupLotsCache();
       if(currentSheetId===id){
         await resetActiveSheetView();
       }
@@ -1940,83 +1704,6 @@ async function renderRecordList(filter){
       toast('삭제되었습니다.');
     });
   });
-
-  list.querySelectorAll('.dc-lot-checkbox').forEach(cb=>{
-    cb.addEventListener('click', (e)=> e.stopPropagation());
-    cb.addEventListener('change', async (e)=>{
-      if(isReadOnly){
-        e.target.checked = !e.target.checked;
-        toast('보기 전용 모드에서는 변경할 수 없습니다.', true);
-        return;
-      }
-      const product = e.target.dataset.product;
-      const eventKey = e.target.dataset.eventkey;
-      const fullKey = dryRoomCleanKey(product, dcSelYear, dcSelMonth) + '::' + eventKey;
-      dryRoomCleanLog[fullKey] = e.target.checked;
-      const lotItem = e.target.closest('.dc-lot-item');
-      const infoSpan = lotItem ? lotItem.querySelector('.dc-lot-info') : null;
-      if(infoSpan){
-        infoSpan.innerHTML = infoSpan.innerHTML.replace(/ · (작성함|미작성)$/, ` · ${e.target.checked ? '작성함' : '미작성'}`);
-      }
-      // 체크 여부에 따라 개별 삭제(✕) 버튼도 즉시 추가/제거
-      if(lotItem){
-        let delBtn = lotItem.querySelector('.dc-lot-del');
-        if(e.target.checked && !delBtn){
-          delBtn = document.createElement('button');
-          delBtn.type = 'button';
-          delBtn.className = 'dc-lot-del';
-          delBtn.title = '작성 체크 삭제';
-          delBtn.dataset.eventkey = eventKey;
-          delBtn.dataset.product = product;
-          delBtn.textContent = '✕';
-          bindDcLotDelButton(delBtn);
-          lotItem.appendChild(delBtn);
-        } else if(!e.target.checked && delBtn){
-          delBtn.remove();
-        }
-      }
-      try{
-        await saveDryRoomLog();
-      }catch(err){
-        console.error(err);
-        toast('저장 중 오류가 발생했습니다.', true);
-        return;
-      }
-      // 미니 배지(n/m)·색상·상태점을 즉시 갱신
-      const groupEl = e.target.closest('.record-group');
-      const miniBadge = groupEl ? groupEl.querySelector('.rg-dry-mini') : null;
-      if(miniBadge){
-        const total = groupEl.querySelectorAll('.dc-lot-checkbox').length;
-        const done = groupEl.querySelectorAll('.dc-lot-checkbox:checked').length;
-        miniBadge.textContent = `💧${done}/${total}`;
-        miniBadge.classList.toggle('all-done', done===total);
-        miniBadge.classList.toggle('has-undone', done<total);
-      }
-    });
-  });
-
-  // 개별 삭제(✕) 버튼: 체크되어 "작성함" 상태인 로트 항목의 청소일지 작성 기록을 취소한다.
-  function bindDcLotDelButton(btn){
-    btn.addEventListener('click', async (e)=>{
-      e.stopPropagation();
-      if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
-      const product = btn.dataset.product;
-      const eventKey = btn.dataset.eventkey;
-      if(!confirm('이 항목의 건조실청소일지 작성 체크를 삭제하시겠습니까?')) return;
-      const fullKey = dryRoomCleanKey(product, dcSelYear, dcSelMonth) + '::' + eventKey;
-      delete dryRoomCleanLog[fullKey];
-      try{
-        await saveDryRoomLog();
-      }catch(err){
-        console.error(err);
-        toast('삭제 중 오류가 발생했습니다.', true);
-        return;
-      }
-      refreshRecordList();
-      toast('삭제되었습니다.');
-    });
-  }
-  list.querySelectorAll('.dc-lot-del').forEach(bindDcLotDelButton);
 }
 
 // renderRecordList()를 "현재 검색어 그대로 유지한 채" 다시 그릴 때 쓰는 짧은 래퍼.
@@ -2034,11 +1721,20 @@ document.getElementById('record-filter-year').addEventListener('change', ()=>{
 document.getElementById('record-filter-month').addEventListener('change', ()=>{
   refreshRecordList();
 });
-document.getElementById('sel-year').addEventListener('change', ()=>{
+document.getElementById('record-filter-product').addEventListener('change', ()=>{
   refreshRecordList();
 });
-document.getElementById('sel-month').addEventListener('change', ()=>{
-  refreshRecordList();
+
+/* ============================================================
+   TAB SWITCHING (월별기기가동생성 / 저장된 기록 / 월별 엑셀 내보내기)
+============================================================ */
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.id === 'panel-'+name));
+  if(name==='list') refreshRecordList();
+}
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=> switchTab(t.dataset.tab));
 });
 
 function escapeHtml(str){
@@ -2047,33 +1743,10 @@ function escapeHtml(str){
 
 /* ============================================================
    LOAD / CREATE SHEET
+   - "불러오기" 버튼은 삭제했다. 이제 기록을 열람/수정하려면 "저장된 기록"
+     탭에서 "수정" 버튼을 누르면 된다 (openSheet 호출 후 월별기기가동생성 탭으로
+     자동 전환됨). 아래 함수들은 그 흐름에서 계속 쓰인다.
 ============================================================ */
-document.getElementById('load-btn').addEventListener('click', async ()=>{
-  const year = parseInt(document.getElementById('sel-year').value,10);
-  const month = parseInt(document.getElementById('sel-month').value,10);
-  const product = document.getElementById('sel-product').value.trim();
-  const device = document.getElementById('sel-device').value.trim();
-  const location = locationForDevice(device) || '미지정';
-
-  if(!device){ toast('기기명을 선택하세요.', true); return; }
-
-  if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
-
-  const id = makeSheetId(year, month, device, location);
-
-  // "불러오기" 버튼은 이제 새 기록을 만들지 않고, 이미 저장되어 있는
-  // 기록만 불러온다. 7가지 품목(BASE_PRODUCTS)에 속한 어떤 기기를 선택해도
-  // 동일하게 동작한다 — 예: 2026년 08월 / RS-204를 선택하고 "불러오기"를
-  // 누르면 그 연월·기기에 해당하는 저장된 기록을 그대로 불러온다.
-  const exists = sheetIndex.some(s=>s.id===id);
-  if(!exists){
-    toast(`${year}년 ${month}월 "${device}" 기록이 아직 없습니다. 먼저 "선택한 연월로 기기가동 생성"으로 만들어주세요.`, true);
-    return;
-  }
-
-  await openSheet(id, {year, month, product, device, location});
-});
-
 async function openSheet(id, metaIfNew){
   let data = await loadSheetById(id);
   isEditingExisting = !!data;
@@ -2652,11 +2325,11 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
       product: currentSheet.product, device: currentSheet.device, location: currentSheet.location,
       updatedAt: currentSheet.updatedAt,
       hasData: sheetHasData(currentSheet),
-      approver: currentSheet.approver || ''
+      approver: currentSheet.approver || '',
+      manager: currentSheet.manager || ''
     };
     if(metaIdx>-1) sheetIndex[metaIdx] = meta; else sheetIndex.push(meta);
     await saveSheetIndex();
-    invalidateGroupLotsCache();
     setDirty(false);
     isEditingExisting = true;
     rowSnapshotMap = new Map();
@@ -3053,7 +2726,7 @@ async function generateSheetsForSelectedMonth(){
     });
     created++;
   }
-  if(created > 0){ await saveSheetIndex(); invalidateGroupLotsCache(); }
+  if(created > 0) await saveSheetIndex();
   refreshRecordList();
   toast(`${targetYear}년 ${targetMonth}월 기록 ${created}건 생성됨` + (skipped ? ` (이미 있던 ${skipped}건은 건너뜀)` : ''));
 }
@@ -3187,8 +2860,8 @@ async function saveAndArchiveSheetsForMonth(targetYear, targetMonth){
 
 document.getElementById('prev-month-save-btn').addEventListener('click', async ()=>{
   if(isReadOnly){ toast('보기 전용 모드에서는 저장할 수 없습니다.', true); return; }
-  const targetYear = parseInt(document.getElementById('sel-year').value, 10);
-  const targetMonth = parseInt(document.getElementById('sel-month').value, 10);
+  const targetYear = parseInt(document.getElementById('xls-year').value, 10);
+  const targetMonth = parseInt(document.getElementById('xls-month').value, 10);
   if(!targetYear || !targetMonth){
     toast('상단에서 저장할 년도와 월을 먼저 선택하세요.', true);
     return;
