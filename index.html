@@ -1065,7 +1065,7 @@ async function initFirebaseBackend(){
       }
       firebaseDb = firebase.firestore();
       // 연결 확인용으로 아무 문서나 한 번 읽어본다 (실패하면 firebase 모드를 쓰지 않음)
-      await withTimeout(firebaseDb.collection('kv').doc('__ping__').get(), 5000);
+      await withTimeout(firebaseDb.collection('kv').doc('__ping_check_').get(), 5000);
       return true;
     }catch(e){
       console.error(`[기기가동 기록서] Firebase 연결 시도 ${attempt}번째 실패`, e);
