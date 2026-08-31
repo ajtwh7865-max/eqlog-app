@@ -251,21 +251,6 @@
     font-size:13.5px;
     min-width:110px;
   }
-  .tb-field input.wide, .tb-field select.wide{min-width:170px;}
-  .tb-field .tb-fixed-display{
-    background:var(--off-white);
-    border:1px solid var(--line);
-    border-radius:5px;
-    color:var(--ink);
-    padding:9px 10px;
-    font-size:13.5px;
-    min-width:170px;
-    display:flex;
-    align-items:center;
-    user-select:none;
-    cursor:default;
-  }
-  .tb-field .tb-fixed-display.is-empty{color:var(--muted);}
   .tb-spacer{flex:1;}
   .status-chip{
     font-size:11.5px;
@@ -297,6 +282,16 @@
   }
   .ledger-title-bar h2{font-size:19px;margin:0;font-weight:800;letter-spacing:-.01em;}
   .ledger-meta{font-size:13px;color:var(--ink-soft);font-weight:600;}
+  .page-indicator{font-weight:600;color:var(--muted);font-size:12px;margin-left:4px;}
+  .page-break-divider{
+    display:flex;align-items:center;gap:10px;
+    margin:18px 20px 0 20px;
+    color:var(--muted);
+    font-size:11.5px;font-weight:700;
+  }
+  .page-break-divider::before, .page-break-divider::after{
+    content:'';flex:1;border-top:1px dashed var(--line);
+  }
   .ledger-info-row{
     display:flex;
     border-bottom:1px solid var(--line);
@@ -754,9 +749,35 @@ let rowSnapshotMap = new Map();  // rowObj -> {필드별 값} 스냅샷 at last 
 let isReadOnly = false;
 
 const DAYS_MIN_ROWS = 20;
-// 위에서 5개 행을 줄인 만큼, 남은 데이터 행 높이를 균등하게 늘려서
-// 표 전체 높이(기존 25행 x 17.25pt)는 그대로 유지되도록 계산
-const DATA_ROW_HEIGHT = (17.25 * 25 / DAYS_MIN_ROWS).toFixed(2);
+// 한 페이지에 인쇄할 데이터 행 수 (이 값을 넘어가면 새 페이지로 넘어감)
+const PRINT_ROWS_PER_PAGE = DAYS_MIN_ROWS;
+/* ------------------------------------------------------------
+   인쇄용 칸 높이(pt) 계산 — A4(가로) 용지 한 장에 "표머리글 4줄 + 데이터
+   20행 + 하단 비고/담당자/승인자 3줄"이 위아래 여백 안에 딱 맞도록 역산.
+   (표 폭/열 너비는 손대지 않고, 세로 높이만 A4 인쇄 가능 영역에 맞춤)
+   ------------------------------------------------------------ */
+const PT_PER_IN = 72;
+// A4 짧은 변(210mm)이 가로 인쇄 시 용지의 "세로" 길이가 된다
+const A4_SHORT_SIDE_PT = (210 / 25.4) * PT_PER_IN;
+// 아래 pageMargins의 top/bottom(각 0.6in)과 반드시 같이 맞춰서 바꿔야 함
+const PAGE_MARGIN_TOP_BOTTOM_PT = 0.6 * PT_PER_IN;
+const A4_LANDSCAPE_CONTENT_HEIGHT_PT = A4_SHORT_SIDE_PT - PAGE_MARGIN_TOP_BOTTOM_PT * 2;
+// 표머리글 4줄(제목/년월/기기명·설치장소/표 열제목) 높이 합
+const HEADER_BLOCK_HEIGHT_PT = 24.95 + 17.25 + 17.25 + 17.25;
+// 하단 비고/담당자/승인자 2줄(기본 행높이 16.5pt) + 문서번호·페이지 표시 1줄(18pt)
+const FOOTER_BLOCK_HEIGHT_PT = 16.5 + 16.5 + 18;
+// 이론상 딱 맞는 높이로 계산하면(여유 0), 실제 프린터/엑셀에서는 내부 반올림(포인트→트윕
+// 변환 등) 오차로 페이지 블록(27행)이 A4 한 장보다 아주 살짝(1pt 미만) 더 커져,
+// 강제 페이지 나누기(rowBreaks) 직전에 엑셀이 자체적으로 한 번 더 자동 나누기를 넣어서
+// 문서번호/페이지 표시 줄만 빈 페이지로 밀려나는 문제가 실제 인쇄에서 발견됐다
+// (LibreOffice 미리보기에서는 재현되지 않았음). 그래서 계산상 여유(SAFETY MARGIN)를
+// 넉넉히 두고 그만큼 칸 높이를 살짝 줄여, 실제 인쇄에서도 확실히 한 페이지 안에 들어가게 한다.
+const PRINT_SAFETY_MARGIN_PT = 8;
+// 위 계산 결과를 데이터 행 20개에 균등 배분한 고정 칸 높이
+// (표에 20행이 넘게 들어가 여러 페이지로 나뉘어도, 매 페이지가 이 크기로 A4 한 장에 맞음)
+const PRINT_FIXED_ROW_HEIGHT = (
+  (A4_LANDSCAPE_CONTENT_HEIGHT_PT - HEADER_BLOCK_HEIGHT_PT - FOOTER_BLOCK_HEIGHT_PT - PRINT_SAFETY_MARGIN_PT) / PRINT_ROWS_PER_PAGE
+).toFixed(2);
 
 /* ============================================================
    HELPERS
@@ -1065,7 +1086,7 @@ async function initFirebaseBackend(){
       }
       firebaseDb = firebase.firestore();
       // 연결 확인용으로 아무 문서나 한 번 읽어본다 (실패하면 firebase 모드를 쓰지 않음)
-      await withTimeout(firebaseDb.collection('kv').doc('__ping_check_').get(), 5000);
+      await withTimeout(firebaseDb.collection('kv').doc('__ping__').get(), 5000);
       return true;
     }catch(e){
       console.error(`[기기가동 기록서] Firebase 연결 시도 ${attempt}번째 실패`, e);
@@ -1538,8 +1559,9 @@ function applyDeviceLocation(){
   }
   if(currentSheet){
     currentSheet.location = location;
-    const locEl = document.getElementById('sheet-location-val');
-    if(locEl) locEl.textContent = location || '-';
+    document.querySelectorAll('.sheet-location-val').forEach(locEl=>{
+      locEl.textContent = location || '-';
+    });
   }
 }
 
@@ -1610,10 +1632,12 @@ function populateYearMonth(){
      때 시트 데이터를 추가로 읽어오지 않는다 (Firestore 재조회로 인한
      렉을 다시 만들지 않기 위함 — 상세 원인은 파일 상단 설명 참고).
 ============================================================ */
+// 승인자 서명 여부로 상태를 표시한다: 승인 전에는(작업 중이든 담당자 서명까지만
+// 끝났든) "작성중", 승인자가 서명해야 비로소 "작성완료"로 바뀐다.
 function recordStatusInfo(meta){
   if(!meta.hasData) return { cls:'none', label:'미작성' };
-  if(meta.manager) return { cls:'done', label:'작성완료' };
-  return { cls:'partial', label:'일부작성' };
+  if(meta.approver) return { cls:'done', label:'작성완료' };
+  return { cls:'partial', label:'작성중' };
 }
 
 function formatUpdatedAt(iso){
@@ -1808,24 +1832,36 @@ async function openSheet(id, metaIfNew){
 
 /* ============================================================
    LEDGER RENDER (the "paper" grid)
+   - 화면 편집용 표도 엑셀 인쇄본과 동일하게 PRINT_ROWS_PER_PAGE(20)행이
+     넘어가면 원본과 똑같은 형식(제목/정보줄/표머리 반복)의 다음 페이지를
+     이어서 만든다. 행 추가/삭제 시에는 매번 renderLedger()를 다시 호출해
+     페이지 분할을 새로 계산한다 (부분 DOM 갱신 대신 전체 재렌더).
 ============================================================ */
-function renderLedger(){
-  const area = document.getElementById('ledger-area');
-  const s = currentSheet;
+function chunkRowsForPages(rows){
+  const size = PRINT_ROWS_PER_PAGE;
+  if(rows.length <= size) return [rows];
+  const pages = [];
+  for(let i=0; i<rows.length; i+=size){
+    pages.push(rows.slice(i, i+size));
+  }
+  return pages;
+}
 
-  area.innerHTML = `
-    <div class="ledger-wrap">
+function ledgerPageHtml(s, pIdx, totalPages){
+  return `
+    <div class="ledger-page">
+      ${pIdx>0 ? `<div class="page-break-divider"><span>${pIdx+1} 페이지</span></div>` : ''}
       <div class="ledger-title-bar">
         <h2>기기가동 기록서</h2>
-        <div class="ledger-meta">${s.year || '20__'}년 ${s.month || '__'}월</div>
+        <div class="ledger-meta">${s.year || '20__'}년 ${s.month || '__'}월${totalPages>1 ? `<span class="page-indicator">(${pIdx+1}/${totalPages}페이지)</span>` : ''}</div>
       </div>
       <div class="ledger-info-row">
         <div class="info-cell" style="flex:1"><span class="lbl">품 목 명</span><span class="val">${escapeHtml(s.product)||'-'}</span></div>
         <div class="info-cell" style="flex:1"><span class="lbl">기 기 명</span><span class="val">${escapeHtml(s.device)||'-'}</span></div>
-        <div class="info-cell" style="flex:1"><span class="lbl">설치장소</span><span class="val" id="sheet-location-val">${escapeHtml(s.location)||'-'}</span></div>
+        <div class="info-cell" style="flex:1"><span class="lbl">설치장소</span><span class="val sheet-location-val">${escapeHtml(s.location)||'-'}</span></div>
       </div>
       <div style="overflow-x:auto;">
-        <table class="grid" id="grid-table">
+        <table class="grid" data-page="${pIdx}">
           <thead>
             <tr>
               <th style="width:9%">날짜</th>
@@ -1839,15 +1875,26 @@ function renderLedger(){
               <th style="width:4%"></th>
             </tr>
           </thead>
-          <tbody id="grid-tbody"></tbody>
+          <tbody class="grid-tbody" data-page="${pIdx}"></tbody>
         </table>
       </div>
+    </div>
+  `;
+}
+
+function renderLedger(){
+  const area = document.getElementById('ledger-area');
+  const s = currentSheet;
+  const pages = chunkRowsForPages(s.rows);
+
+  area.innerHTML = `
+    <div class="ledger-wrap">
+      ${pages.map((_, pIdx)=> ledgerPageHtml(s, pIdx, pages.length)).join('')}
       <div class="grid-actions">
         <div class="left-actions">
-          <button class="link-btn" id="add-row-btn">+ 행 추가</button>
-          <button class="link-btn" id="add-today-btn">+ 오늘 날짜로 행 추가</button>
+          <button class="link-btn" id="add-page-btn">+ 페이지 추가</button>
         </div>
-        <div style="font-size:12px;color:var(--ink-soft);">총 ${s.rows.length}행</div>
+        <div style="font-size:12px;color:var(--ink-soft);">총 ${s.rows.length}행${pages.length>1 ? ` · ${pages.length}페이지` : ''}</div>
       </div>
       <div class="footer-block">
         <div class="footer-cell">
@@ -1869,26 +1916,20 @@ function renderLedger(){
         : '※ 독립 실행 모드입니다. 이 기록은 현재 브라우저에만 저장되며 다른 컴퓨터와 공유되지 않습니다.' }</div>
   `;
 
-  const tbody = document.getElementById('grid-tbody');
-  s.rows.forEach(row => tbody.appendChild(createRowEl(row)));
-
-  document.getElementById('add-row-btn').addEventListener('click', ()=>{
-    if(isEditBlocked()){ toast('보기 전용 모드에서는 행을 추가할 수 없습니다.', true); return; }
-    const row = blankRow();
-    s.rows.push(row);
-    tbody.appendChild(createRowEl(row));
-    setDirty(true);
-    document.querySelector('.grid-actions div[style]').textContent = `총 ${s.rows.length}행`;
+  pages.forEach((pageRows, pIdx)=>{
+    const tbody = area.querySelector(`.grid-tbody[data-page="${pIdx}"]`);
+    pageRows.forEach(row => tbody.appendChild(createRowEl(row)));
   });
-  document.getElementById('add-today-btn').addEventListener('click', ()=>{
-    if(isEditBlocked()){ toast('보기 전용 모드에서는 행을 추가할 수 없습니다.', true); return; }
-    const row = blankRow();
-    const d = new Date();
-    row.date = `${d.getMonth()+1}/${d.getDate()}`;
-    s.rows.push(row);
-    tbody.appendChild(createRowEl(row));
+
+  // 행 단위가 아니라 엑셀 인쇄 페이지 단위(PRINT_ROWS_PER_PAGE=20행)로 한 번에 추가한다 —
+  // 화면 편집 표도 엑셀 출력과 똑같이 "페이지" 단위로 나뉘도록 통일.
+  document.getElementById('add-page-btn').addEventListener('click', ()=>{
+    if(isEditBlocked()){ toast('보기 전용 모드에서는 페이지를 추가할 수 없습니다.', true); return; }
+    for(let i=0; i<PRINT_ROWS_PER_PAGE; i++){
+      s.rows.push(blankRow());
+    }
     setDirty(true);
-    document.querySelector('.grid-actions div[style]').textContent = `총 ${s.rows.length}행`;
+    renderLedger();
   });
 
   const footerNoteEl = document.getElementById('footer-note');
@@ -1899,8 +1940,7 @@ function renderLedger(){
   renderApproverSign(footerApproverBox, s, footerManagerBox);
 
   if(isEditBlocked()){
-    document.getElementById('add-row-btn').disabled = true;
-    document.getElementById('add-today-btn').disabled = true;
+    document.getElementById('add-page-btn').disabled = true;
     footerNoteEl.disabled = true;
     document.getElementById('save-btn').disabled = true;
   }
@@ -2270,9 +2310,8 @@ function createRowEl(rowObj){
     if(!confirm('이 행을 삭제하시겠습니까?')) return;
     const idx = currentSheet.rows.indexOf(rowObj);
     if(idx>-1) currentSheet.rows.splice(idx,1);
-    tr.remove();
     setDirty(true);
-    document.querySelector('.grid-actions div[style]').textContent = `총 ${currentSheet.rows.length}행`;
+    renderLedger();
   });
   delTd.appendChild(delBtn);
   tr.appendChild(delTd);
@@ -2377,21 +2416,57 @@ function xCell(ref, style, value){
 
 const COL_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
 
-// 시트의 행 구성(데이터 시작/끝 행, 비고 박스 행 등)을 계산.
-// buildSheetXml과 buildWorkbookBlob(빗금 그리기)에서 공통으로 사용.
+// 한 페이지 블록의 총 행 수: 머리글 4행 + 데이터 PRINT_ROWS_PER_PAGE(20)행
+// + 비고/담당자/승인자 2행 + ISO문서번호/페이지표시 1행 = 27행.
+// (실제 스캔 원본 한 장이 이 27행으로 A4 한 페이지를 정확히 채우도록
+//  PRINT_FIXED_ROW_HEIGHT가 역산되어 있음 — 상단 상수 블록 참고)
+const PAGE_BLOCK_ROWS = 4 + PRINT_ROWS_PER_PAGE + 2 + 1;
+
+// 시트의 페이지 구성을 계산한다.
+// - 20행이 넘으면, "제목/년월/기기명·설치장소/표머리글 + 데이터 20행(고정) +
+//   비고·담당자·승인자 + 문서번호/페이지표시"로 이루어진 한 페이지 블록을
+//   원본과 완전히 동일한 형태로 통째로 반복해서 여러 페이지를 만든다
+//   (헤더만 반복하는 방식이 아니라, 페이지 자체를 그대로 복제).
+// - 서명(담당자/승인자)과 비고 내용은 마지막 페이지에만 채워 넣고,
+//   그 외 페이지는 스캔 원본처럼 빈 칸 + 사선으로 표시한다.
+// buildSheetXml과 buildDiagonalShapes에서 공통으로 사용.
 function computeSheetLayout(sheet){
-  const rows = sheet.rows.length >= DAYS_MIN_ROWS
+  const allRows = sheet.rows.length >= DAYS_MIN_ROWS
     ? sheet.rows
     : [...sheet.rows, ...Array.from({length: DAYS_MIN_ROWS - sheet.rows.length}, blankRow)];
 
-  const dataStartRow = 5;                       // 1-indexed, 첫 데이터 행
-  const dataEndRow = dataStartRow + rows.length - 1;
-  const footerLabelRow = dataEndRow + 1;
-  const footerEndRow = footerLabelRow + 1;       // 비고/담당자/승인자 박스 (2행)
-  const infoRow = footerEndRow + 1;              // ISO 문서번호 / 페이지 표시 행
-  const totalRows = infoRow;
+  const pageCount = Math.max(1, Math.ceil(allRows.length / PRINT_ROWS_PER_PAGE));
+  const pages = [];
+  for(let p = 0; p < pageCount; p++){
+    const offset = p * PAGE_BLOCK_ROWS;
+    const rawPageRows = allRows.slice(p * PRINT_ROWS_PER_PAGE, (p + 1) * PRINT_ROWS_PER_PAGE);
+    const rows = rawPageRows.length >= PRINT_ROWS_PER_PAGE
+      ? rawPageRows
+      : [...rawPageRows, ...Array.from({length: PRINT_ROWS_PER_PAGE - rawPageRows.length}, blankRow)];
 
-  return { rows, dataStartRow, dataEndRow, footerLabelRow, footerEndRow, infoRow, totalRows };
+    const titleRow = offset + 1;
+    const yearMonthRow = offset + 2;
+    const deviceLocRow = offset + 3;
+    const colHeaderRow = offset + 4;
+    const dataStartRow = offset + 5;
+    const dataEndRow = dataStartRow + PRINT_ROWS_PER_PAGE - 1;
+    const footerLabelRow = dataEndRow + 1;
+    const footerEndRow = footerLabelRow + 1;
+    const infoRow = footerEndRow + 1;
+
+    pages.push({
+      pageIndex: p, isLastPage: p === pageCount - 1, rows,
+      titleRow, yearMonthRow, deviceLocRow, colHeaderRow,
+      dataStartRow, dataEndRow, footerLabelRow, footerEndRow, infoRow
+    });
+  }
+
+  const totalRows = pageCount * PAGE_BLOCK_ROWS;
+  // 페이지 나누기: 마지막 페이지를 제외한 각 페이지의 "문서번호/페이지표시" 행
+  // 바로 다음에서 페이지를 끊는다 (각 페이지가 완결된 한 장이 되도록).
+  const pageBreakRows = pages.slice(0, -1).map(pg => pg.infoRow);
+
+  return { pages, pageCount, totalRows, isPaginated: pageCount > 1, pageBreakRows };
 }
 
 // 데이터 행에 실제로 입력된 값이 하나라도 있는지 확인
@@ -2407,114 +2482,149 @@ function lastFilledRowIndex(rows){
 }
 
 function buildSheetXml(sheet){
-  const { rows, dataStartRow, dataEndRow, footerLabelRow, footerEndRow, infoRow, totalRows } = computeSheetLayout(sheet);
+  const { pages, pageCount, totalRows, isPaginated, pageBreakRows } = computeSheetLayout(sheet);
+  // 데이터 행은 항상 PRINT_FIXED_ROW_HEIGHT(A4 한 페이지에 20행+머리글+하단이 딱 맞도록
+  // 역산한 고정 높이)를 쓴다 — 20행 이하 한 페이지짜리든, 20행을 넘어 여러 페이지로
+  // 나뉘든 항상 같은 칸 크기로 "고정"되어 매 페이지가 A4 용지에 꽉 차게 인쇄된다.
+  const rowHeightForData = PRINT_FIXED_ROW_HEIGHT;
 
   const deviceText = sheet.device || '';
-
-  const rowsXml = [];
-
-  // 1행: 제목
-  rowsXml.push(`<row r="1" spans="1:13" ht="24.95" customHeight="1" x14ac:dyDescent="0.3">`
-    + xCell('A1','7','기기가동기록서')
-    + COL_LETTERS.slice(1).map(c=>xCell(`${c}1`,'7','')).join('')
-    + `</row>`);
-
-  // 2행: 년/월
-  rowsXml.push(`<row r="2" spans="1:13" s="11" customFormat="1" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
-    + xCell('A2','15', `${sheet.year||''}년 ${sheet.month ? String(sheet.month).padStart(2,'0') : ''}월`)
-    + COL_LETTERS.slice(1,-1).map(c=>xCell(`${c}2`,'16','')).join('')
-    + xCell('M2','17','')
-    + `</row>`);
-
-  // 3행: 기기명 / 설치장소
-  rowsXml.push(`<row r="3" spans="1:13" s="11" customFormat="1" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
-    + xCell('A3','18', `기기명 ${deviceText}`)
-    + xCell('B3','18','') + xCell('C3','18','') + xCell('D3','18','') + xCell('E3','18','')
-    + xCell('F3','18','설치장소')
-    + xCell('G3','18','') + xCell('H3','18','') + xCell('I3','18','')
-    + xCell('J3','18', sheet.location || '')
-    + xCell('K3','18','') + xCell('L3','18','') + xCell('M3','18','')
-    + `</row>`);
-
-  // 4행: 표 머리글
-  rowsXml.push(`<row r="4" spans="1:13" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
-    + xCell('A4','3','날짜')
-    + xCell('B4','3','사용시간')
-    + xCell('C4','2','제조번호')
-    + xCell('D4','2','')
-    + xCell('E4','3','작업공정')
-    + xCell('F4','3','작업자')
-    + xCell('G4','3','확인자')
-    + xCell('H4','4','비고')
-    + xCell('I4','5','') + xCell('J4','5','') + xCell('K4','5','') + xCell('L4','5','')
-    + xCell('M4','6','')
-    + `</row>`);
-
-  // 데이터 행
-  rows.forEach((r, i)=>{
-    const rn = dataStartRow + i;
-    const timeRange = (r.timeStart || r.timeEnd)
-      ? `${r.timeStart||''}${(r.timeStart&&r.timeEnd)?'~':''}${r.timeEnd||''}`
-      : '';
-    rowsXml.push(`<row r="${rn}" spans="1:13" ht="${DATA_ROW_HEIGHT}" customHeight="1" x14ac:dyDescent="0.3">`
-      + xCell(`A${rn}`,'2', r.date || '')
-      + xCell(`B${rn}`,'13', timeRange)
-      + xCell(`C${rn}`,'13', r.mfgNo || '')
-      + xCell(`D${rn}`,'13','')
-      + xCell(`E${rn}`,'13', r.process || '')
-      + xCell(`F${rn}`,'13', r.worker ? displayName(r.worker) : '')
-      + xCell(`G${rn}`,'13', r.checker ? displayName(r.checker) : '')
-      + xCell(`H${rn}`,'13', r.note || '')
-      + xCell(`I${rn}`,'13','') + xCell(`J${rn}`,'13','') + xCell(`K${rn}`,'13','')
-      + xCell(`L${rn}`,'13','') + xCell(`M${rn}`,'13','')
-      + `</row>`);
-  });
-
-  // 하단: 비고 / 담당자 / 승인자 (2행 병합)
   const managerName = sheet.manager ? displayName(sheet.manager) : '';
   const approverName = sheet.approver ? displayName(sheet.approver) : '';
-  rowsXml.push(`<row r="${footerLabelRow}" spans="1:13" x14ac:dyDescent="0.3">`
-    + xCell(`A${footerLabelRow}`,'2','비고')
-    + xCell(`B${footerLabelRow}`,'2', sheet.footerNote || '')
-    + xCell(`C${footerLabelRow}`,'2','') + xCell(`D${footerLabelRow}`,'2','')
-    + xCell(`E${footerLabelRow}`,'2','') + xCell(`F${footerLabelRow}`,'2','')
-    + xCell(`G${footerLabelRow}`,'2','')
-    + xCell(`H${footerLabelRow}`,'2','담당자')
-    + xCell(`I${footerLabelRow}`,'2', managerName)
-    + xCell(`J${footerLabelRow}`,'2','')
-    + xCell(`K${footerLabelRow}`,'2','승인자')
-    + xCell(`L${footerLabelRow}`,'2', approverName)
-    + xCell(`M${footerLabelRow}`,'2','')
-    + `</row>`);
-  rowsXml.push(`<row r="${footerEndRow}" spans="1:13" x14ac:dyDescent="0.3">`
-    + COL_LETTERS.map(c=>xCell(`${c}${footerEndRow}`,'2','')).join('')
-    + `</row>`);
-  rowsXml.push(`<row r="${infoRow}" spans="1:13" ht="18" customHeight="1" x14ac:dyDescent="0.3">`
-    + xCell(`A${infoRow}`,'14','ISO-FES-001-02')
-    + xCell(`B${infoRow}`,'14','') + xCell(`C${infoRow}`,'14','') + xCell(`D${infoRow}`,'14','')
-    + xCell(`E${infoRow}`,'14','') + xCell(`F${infoRow}`,'14','') + xCell(`G${infoRow}`,'14','')
-    + xCell(`H${infoRow}`,'14','') + xCell(`I${infoRow}`,'14','') + xCell(`J${infoRow}`,'14','')
-    + xCell(`K${infoRow}`,'14','') + xCell(`L${infoRow}`,'14','')
-    + xCell(`M${infoRow}`,'14','1 of 1')
-    + `</row>`);
 
-  const merges = ['A1:M1','A2:M2','A3:E3','F3:I3','J3:M3','C4:D4','H4:M4'];
-  rows.forEach((r,i)=>{
-    const rn = dataStartRow + i;
-    merges.push(`C${rn}:D${rn}`, `H${rn}:M${rn}`);
+  const rowsXml = [];
+  const merges = [];
+
+  // 페이지 블록(제목/년월/기기명·설치장소/표머리글 + 데이터 20행 + 비고·담당자·승인자
+  // + 문서번호/페이지표시)을 페이지 수만큼 그대로 반복해서 만든다 — 20행이 넘어가면
+  // 스캔 원본과 완전히 동일한 형태의 페이지를 한 장 더 이어붙이는 것과 같다.
+  // 서명(담당자/승인자)과 비고 내용은 마지막 페이지에만 채우고, 그 외 페이지는
+  // 원본처럼 빈 칸으로 남겨둔다(사선 처리는 buildDiagonalShapes에서).
+  pages.forEach(page=>{
+    const { titleRow, yearMonthRow, deviceLocRow, colHeaderRow, dataStartRow, dataEndRow,
+            footerLabelRow, footerEndRow, infoRow, rows, isLastPage, pageIndex } = page;
+
+    // 제목
+    rowsXml.push(`<row r="${titleRow}" spans="1:13" ht="24.95" customHeight="1" x14ac:dyDescent="0.3">`
+      + xCell(`A${titleRow}`,'7','기기가동기록서')
+      + COL_LETTERS.slice(1).map(c=>xCell(`${c}${titleRow}`,'7','')).join('')
+      + `</row>`);
+
+    // 년/월
+    rowsXml.push(`<row r="${yearMonthRow}" spans="1:13" s="11" customFormat="1" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
+      + xCell(`A${yearMonthRow}`,'15', `${sheet.year||''}년 ${sheet.month ? String(sheet.month).padStart(2,'0') : ''}월`)
+      + COL_LETTERS.slice(1,-1).map(c=>xCell(`${c}${yearMonthRow}`,'16','')).join('')
+      + xCell(`M${yearMonthRow}`,'17','')
+      + `</row>`);
+
+    // 기기명 / 설치장소
+    rowsXml.push(`<row r="${deviceLocRow}" spans="1:13" s="11" customFormat="1" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
+      + xCell(`A${deviceLocRow}`,'18', `기기명 ${deviceText}`)
+      + xCell(`B${deviceLocRow}`,'18','') + xCell(`C${deviceLocRow}`,'18','') + xCell(`D${deviceLocRow}`,'18','') + xCell(`E${deviceLocRow}`,'18','')
+      + xCell(`F${deviceLocRow}`,'18','설치장소')
+      + xCell(`G${deviceLocRow}`,'18','') + xCell(`H${deviceLocRow}`,'18','') + xCell(`I${deviceLocRow}`,'18','')
+      + xCell(`J${deviceLocRow}`,'18', sheet.location || '')
+      + xCell(`K${deviceLocRow}`,'18','') + xCell(`L${deviceLocRow}`,'18','') + xCell(`M${deviceLocRow}`,'18','')
+      + `</row>`);
+
+    // 표 머리글
+    rowsXml.push(`<row r="${colHeaderRow}" spans="1:13" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
+      + xCell(`A${colHeaderRow}`,'3','날짜')
+      + xCell(`B${colHeaderRow}`,'3','사용시간')
+      + xCell(`C${colHeaderRow}`,'2','제조번호')
+      + xCell(`D${colHeaderRow}`,'2','')
+      + xCell(`E${colHeaderRow}`,'3','작업공정')
+      + xCell(`F${colHeaderRow}`,'3','작업자')
+      + xCell(`G${colHeaderRow}`,'3','확인자')
+      + xCell(`H${colHeaderRow}`,'4','비고')
+      + xCell(`I${colHeaderRow}`,'5','') + xCell(`J${colHeaderRow}`,'5','') + xCell(`K${colHeaderRow}`,'5','') + xCell(`L${colHeaderRow}`,'5','')
+      + xCell(`M${colHeaderRow}`,'6','')
+      + `</row>`);
+
+    // 데이터 행 (이 페이지 몫, 항상 20행)
+    rows.forEach((r, i)=>{
+      const rn = dataStartRow + i;
+      const timeRange = (r.timeStart || r.timeEnd)
+        ? `${r.timeStart||''}${(r.timeStart&&r.timeEnd)?'~':''}${r.timeEnd||''}`
+        : '';
+      rowsXml.push(`<row r="${rn}" spans="1:13" ht="${rowHeightForData}" customHeight="1" x14ac:dyDescent="0.3">`
+        + xCell(`A${rn}`,'2', r.date || '')
+        + xCell(`B${rn}`,'13', timeRange)
+        + xCell(`C${rn}`,'13', r.mfgNo || '')
+        + xCell(`D${rn}`,'13','')
+        + xCell(`E${rn}`,'13', r.process || '')
+        + xCell(`F${rn}`,'13', r.worker ? displayName(r.worker) : '')
+        + xCell(`G${rn}`,'13', r.checker ? displayName(r.checker) : '')
+        + xCell(`H${rn}`,'13', r.note || '')
+        + xCell(`I${rn}`,'13','') + xCell(`J${rn}`,'13','') + xCell(`K${rn}`,'13','')
+        + xCell(`L${rn}`,'13','') + xCell(`M${rn}`,'13','')
+        + `</row>`);
+    });
+
+    // 하단: 비고 / 담당자 / 승인자 (2행 병합) — 실제 값은 마지막 페이지에만
+    const pageFooterNote = isLastPage ? (sheet.footerNote || '') : '';
+    const pageManagerName = isLastPage ? managerName : '';
+    const pageApproverName = isLastPage ? approverName : '';
+    rowsXml.push(`<row r="${footerLabelRow}" spans="1:13" x14ac:dyDescent="0.3">`
+      + xCell(`A${footerLabelRow}`,'2','비고')
+      + xCell(`B${footerLabelRow}`,'2', pageFooterNote)
+      + xCell(`C${footerLabelRow}`,'2','') + xCell(`D${footerLabelRow}`,'2','')
+      + xCell(`E${footerLabelRow}`,'2','') + xCell(`F${footerLabelRow}`,'2','')
+      + xCell(`G${footerLabelRow}`,'2','')
+      + xCell(`H${footerLabelRow}`,'2','담당자')
+      + xCell(`I${footerLabelRow}`,'2', pageManagerName)
+      + xCell(`J${footerLabelRow}`,'2','')
+      + xCell(`K${footerLabelRow}`,'2','승인자')
+      + xCell(`L${footerLabelRow}`,'2', pageApproverName)
+      + xCell(`M${footerLabelRow}`,'2','')
+      + `</row>`);
+    rowsXml.push(`<row r="${footerEndRow}" spans="1:13" x14ac:dyDescent="0.3">`
+      + COL_LETTERS.map(c=>xCell(`${c}${footerEndRow}`,'2','')).join('')
+      + `</row>`);
+    rowsXml.push(`<row r="${infoRow}" spans="1:13" ht="18" customHeight="1" x14ac:dyDescent="0.3">`
+      + xCell(`A${infoRow}`,'14','ISO-FES-001-02')
+      + xCell(`B${infoRow}`,'14','') + xCell(`C${infoRow}`,'14','') + xCell(`D${infoRow}`,'14','')
+      + xCell(`E${infoRow}`,'14','') + xCell(`F${infoRow}`,'14','') + xCell(`G${infoRow}`,'14','')
+      + xCell(`H${infoRow}`,'14','') + xCell(`I${infoRow}`,'14','') + xCell(`J${infoRow}`,'14','')
+      + xCell(`K${infoRow}`,'14','') + xCell(`L${infoRow}`,'14','')
+      + xCell(`M${infoRow}`,'14', `${pageIndex + 1} of ${pageCount}`)
+      + `</row>`);
+
+    merges.push(
+      `A${titleRow}:M${titleRow}`, `A${yearMonthRow}:M${yearMonthRow}`,
+      `A${deviceLocRow}:E${deviceLocRow}`, `F${deviceLocRow}:I${deviceLocRow}`, `J${deviceLocRow}:M${deviceLocRow}`,
+      `C${colHeaderRow}:D${colHeaderRow}`, `H${colHeaderRow}:M${colHeaderRow}`
+    );
+    rows.forEach((r,i)=>{
+      const rn = dataStartRow + i;
+      merges.push(`C${rn}:D${rn}`, `H${rn}:M${rn}`);
+    });
+    merges.push(
+      `A${footerLabelRow}:A${footerEndRow}`,
+      `B${footerLabelRow}:G${footerEndRow}`,
+      `H${footerLabelRow}:H${footerEndRow}`,
+      `I${footerLabelRow}:J${footerEndRow}`,
+      `K${footerLabelRow}:K${footerEndRow}`,
+      `L${footerLabelRow}:M${footerEndRow}`,
+    );
   });
-  merges.push(
-    `A${footerLabelRow}:A${footerEndRow}`,
-    `B${footerLabelRow}:G${footerEndRow}`,
-    `H${footerLabelRow}:H${footerEndRow}`,
-    `I${footerLabelRow}:J${footerEndRow}`,
-    `K${footerLabelRow}:K${footerEndRow}`,
-    `L${footerLabelRow}:M${footerEndRow}`,
-  );
 
   const mergeCellsXml = `<mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells>`;
 
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac xr xr2 xr3" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision" xmlns:xr2="http://schemas.microsoft.com/office/spreadsheetml/2015/revision2" xmlns:xr3="http://schemas.microsoft.com/office/spreadsheetml/2016/revision3" xr:uid="{00000000-0001-0000-0000-000000000000}"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="A1:M${totalRows}"/><sheetViews><sheetView tabSelected="1" view="pageBreakPreview" zoomScale="100" zoomScaleNormal="100" zoomScaleSheetLayoutView="100" workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="16.5" x14ac:dyDescent="0.3"/><cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="2" width="15" customWidth="1"/><col min="3" max="4" width="7.5" customWidth="1"/><col min="5" max="5" width="10" customWidth="1"/><col min="6" max="7" width="9" customWidth="1"/><col min="8" max="13" width="10" customWidth="1"/></cols><sheetData>${rowsXml.join('')}</sheetData>${mergeCellsXml}<phoneticPr fontId="1" type="noConversion"/><printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="1"/><headerFooter differentFirst="0" scaleWithDoc="1" alignWithMargins="1"></headerFooter></worksheet>`;
+  // 칸 높이를 이미 A4 한 페이지에 정확히 맞도록 계산해뒀으므로(PRINT_FIXED_ROW_HEIGHT),
+  // 엑셀이 세로 방향으로 추가로 축소/확대(fitToHeight)하지 않도록 끄고, 가로 폭만
+  // 한 페이지 너비(fitToWidth=1)에 맞춘다. 20행이 넘는 경우엔 PRINT_ROWS_PER_PAGE(20)행마다
+  // 강제 페이지 나누기(rowBreaks)를 넣어 매 페이지가 A4 한 장 분량으로 딱 나뉜다.
+  // 엑셀 자체의 "한 페이지에 맞춤" 자동 축소를 쓰지 않고 scale="100"(고정 100%)으로
+  // 인쇄한다 — 자동 축소를 켜두면 가로 폭을 줄이는 비율이 세로 칸 높이에도 그대로
+  // 곱해져서, 위에서 A4 크기에 맞춰 계산해둔 PRINT_FIXED_ROW_HEIGHT가 다시 줄어드는
+  // 문제가 있었다. 대신 아래 <cols> 너비 자체를 A4 폭에 맞게 미리 줄여뒀으므로,
+  // 100% 그대로 인쇄해도 가로/세로 모두 A4 한 페이지에 정확히 맞는다.
+  const pageSetupXml = `<pageSetup paperSize="9" orientation="landscape" scale="100"/>`;
+  const rowBreaksXml = (isPaginated && pageBreakRows.length)
+    ? `<rowBreaks count="${pageBreakRows.length}" manualBreakCount="${pageBreakRows.length}">${pageBreakRows.map(r=>`<brk id="${r}" max="16383" man="1"/>`).join('')}</rowBreaks>`
+    : '';
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac xr xr2 xr3" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision" xmlns:xr2="http://schemas.microsoft.com/office/spreadsheetml/2015/revision2" xmlns:xr3="http://schemas.microsoft.com/office/spreadsheetml/2016/revision3" xr:uid="{00000000-0001-0000-0000-000000000000}"><sheetPr/><dimension ref="A1:M${totalRows}"/><sheetViews><sheetView tabSelected="1" zoomScale="100" zoomScaleNormal="100" workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="16.5" x14ac:dyDescent="0.3"/><cols><col min="1" max="1" width="10.92" customWidth="1"/><col min="2" max="2" width="11.7" customWidth="1"/><col min="3" max="4" width="5.85" customWidth="1"/><col min="5" max="5" width="7.8" customWidth="1"/><col min="6" max="7" width="7.02" customWidth="1"/><col min="8" max="13" width="7.8" customWidth="1"/></cols><sheetData>${rowsXml.join('')}</sheetData>${mergeCellsXml}<phoneticPr fontId="1" type="noConversion"/><printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>${pageSetupXml}<headerFooter differentFirst="0" scaleWithDoc="1" alignWithMargins="1"></headerFooter>${rowBreaksXml}</worksheet>`;
 }
 
 /* ============================================================
@@ -2544,33 +2654,43 @@ function buildDrawingXml(shapesXml){
 }
 
 // 시트 내용을 보고 필요한 사선 도형 XML 목록을 만든다 (없으면 빈 배열)
+// 페이지가 여러 장이어도 각 페이지가 스캔 원본과 똑같은 독립된 한 장이므로,
+// 사선도 페이지마다 그 페이지 안에서만(그 페이지의 데이터/비고 박스 범위 안에서만)
+// 완결되도록 각각 따로 계산한다 — 도형이 페이지 나누기를 넘어가면 실제 엑셀에서
+// 다음 페이지에 사선이 인쇄되지 않는 문제가 있었기 때문.
 function buildDiagonalShapes(sheet){
   const layout = computeSheetLayout(sheet);
   const shapes = [];
   let shapeId = 2;
 
-  const lastFilled = lastFilledRowIndex(layout.rows);
-  if(lastFilled < layout.rows.length - 1){
-    const diagStartRow1 = layout.dataStartRow + lastFilled + 1; // 대각선이 시작될 첫 빈 행(1-indexed)
-    // 표 전체 폭(A~M) 기준, 위쪽 경계 = 빈 행 시작 지점, 아래쪽 경계 = 표 맨 아래 행
-    shapes.push(diagLineXml(shapeId++, 'MainTableDiagonal', 0, diagStartRow1 - 1, 13, layout.dataEndRow));
-  }
+  layout.pages.forEach(page=>{
+    const { rows, dataStartRow, dataEndRow, footerLabelRow, footerEndRow, isLastPage, pageIndex } = page;
 
-  const footerNoteFilled = !!(sheet.footerNote && String(sheet.footerNote).trim());
-  if(!footerNoteFilled){
-    // 비고 박스(B~G, footerLabelRow~footerEndRow) 전체에 대각선
-    shapes.push(diagLineXml(shapeId++, 'RemarkBoxDiagonal', 1, layout.footerLabelRow - 1, 7, layout.footerEndRow));
-  }
+    // 메인 표: 이 페이지에서 입력된 마지막 행 다음 행부터, 이 페이지의 마지막
+    // 데이터 행까지 대각선 (표 전체 폭 A~M 기준)
+    const lastFilled = lastFilledRowIndex(rows);
+    if(lastFilled < rows.length - 1){
+      const diagStartRow = dataStartRow + lastFilled + 1;
+      shapes.push(diagLineXml(shapeId++, `MainTableDiagonal${pageIndex}`, 0, diagStartRow - 1, 13, dataEndRow));
+    }
 
-  // 각 날짜 행: 다른 항목은 입력되어 있는데 비고만 비어 있으면,
-  // 그 행의 비고 칸(H~M)에만 대각선을 긋는다 (행 전체가 비어 있으면
-  // 이미 위의 MainTableDiagonal이 그 행을 덮으므로 중복 처리하지 않음)
-  layout.rows.forEach((r, i)=>{
-    if(!rowHasData(r)) return;
-    const noteFilled = !!(r.note && String(r.note).trim());
-    if(noteFilled) return;
-    const rn = layout.dataStartRow + i;
-    shapes.push(diagLineXml(shapeId++, `NoteDiagonal${i}`, 7, rn - 1, 13, rn));
+    // 하단 비고 박스: 실제 비고 내용은 마지막 페이지에만 들어가므로, 그 외
+    // 페이지는 항상 빈 칸으로 취급해 사선을 긋는다.
+    const footerNoteFilled = isLastPage && !!(sheet.footerNote && String(sheet.footerNote).trim());
+    if(!footerNoteFilled){
+      shapes.push(diagLineXml(shapeId++, `RemarkBoxDiagonal${pageIndex}`, 1, footerLabelRow - 1, 7, footerEndRow));
+    }
+
+    // 각 날짜 행: 다른 항목은 입력되어 있는데 비고만 비어 있으면,
+    // 그 행의 비고 칸(H~M)에만 대각선을 긋는다 (행 전체가 비어 있으면
+    // 이미 위의 MainTableDiagonal이 그 행을 덮으므로 중복 처리하지 않음)
+    rows.forEach((r, i)=>{
+      if(!rowHasData(r)) return;
+      const noteFilled = !!(r.note && String(r.note).trim());
+      if(noteFilled) return;
+      const rn = dataStartRow + i;
+      shapes.push(diagLineXml(shapeId++, `NoteDiagonal${pageIndex}_${i}`, 7, rn - 1, 13, rn));
+    });
   });
 
   return shapes;
@@ -2632,9 +2752,15 @@ async function buildMultiSheetWorkbookBlob(sheetList){
     contentTypeOverrides.push(`<Override PartName="/xl/worksheets/sheet${idx}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`);
 
     const rid = `rId${nextRid++}`;
-    const tabName = xmlEscape(sanitizeSheetName(entry.device));
+    const rawSheetName = sanitizeSheetName(entry.device);
+    const tabName = xmlEscape(rawSheetName);
     sheetTagsXml.push(`<sheet name="${tabName}" sheetId="${idx}" r:id="${rid}"/>`);
     relsTagsXml.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${idx}.xml"/>`);
+    // 참고: 예전에는 "인쇄 제목(Print Titles, _xlnm.Print_Titles $1:$4)"으로 표 헤더
+    // 4줄만 매 페이지에 반복시켰지만, 지금은 buildSheetXml이 페이지 블록(제목/년월/
+    // 기기명·설치장소/표머리글/데이터20행/비고·담당자·승인자) 자체를 페이지마다
+    // 실제 행으로 통째로 반복해서 만들기 때문에 Print Titles를 쓰면 안 된다
+    // (쓰면 이전 페이지의 헤더가 다음 페이지 위에 한 번 더 겹쳐 인쇄됨).
   });
 
   // xl/workbook.xml: <sheets>...</sheets>를 우리가 만든 시트 목록으로 교체 (순서 = 탭 순서)
