@@ -604,6 +604,7 @@
   <div class="app-wrap">
     <div class="topbar">
       <span class="mode-badge" id="mode-badge"></span>
+      <button class="link-btn" id="reconnect-btn" style="display:none;">🔄 다시 연결 시도</button>
       <span class="who">👤 <b id="current-user-label"></b>님</span>
       <button class="btn btn-danger" id="logout-btn">로그아웃</button>
     </div>
@@ -1119,27 +1120,32 @@ async function initFirebaseBackend(){
     return false;
   }
 
-  // 네트워크가 일시적으로 불안정해도 바로 실패 처리하지 않도록 최대 2번 시도한다
-  // (각 시도는 5초 안에 응답이 없으면 실패로 간주하고 다음 시도로 넘어감)
-  for(let attempt=1; attempt<=2; attempt++){
+  // 네트워크가 일시적으로 불안정해도 바로 실패 처리하지 않도록 최대 3번 시도한다.
+  // 예전에는 2번(5초씩, 최대 10초)만 시도했는데, 실제로 확인해보니 Firestore
+  // 최초 연결(SDK 초기화 + DNS + TLS 핸드셰이크)이 느린 네트워크에서는 5초를
+  // 넘기는 경우가 있어, 실제로는 연결될 수 있는 상황인데도 "단독 실행" 모드로
+  // 잘못 떨어지는 경우가 있었다. 시도 횟수와 각 시도의 제한시간을 늘려 이런
+  // 오탐(false negative)을 줄인다.
+  const attemptTimeouts = [6000, 8000, 10000];
+  for(let attempt=1; attempt<=attemptTimeouts.length; attempt++){
     try{
       if(!firebase.apps || !firebase.apps.length){
         firebase.initializeApp(FIREBASE_CONFIG);
       }
       firebaseDb = firebase.firestore();
       // 연결 확인용으로 아무 문서나 한 번 읽어본다 (실패하면 firebase 모드를 쓰지 않음)
-      // 주의: 문서 ID가 "__로 시작하고 끝나는" 패턴(예: __ping__)은 Firestore가
+      // 주의: 문서 ID가 "__로 시작하고 끝나는" 패턴(예: 두 밑줄로 시작/종료)은 Firestore가
       // 내부용으로 예약해둔 이름 규칙이라, 만에 하나의 혼란을 없애기 위해 일반적인
       // 이름(ping_check)을 사용한다. 실제 기록 데이터와 동일한 'kv' 컬렉션을 읽으므로
       // 이 확인이 성공하면 실제 데이터 읽기/쓰기도 문제없이 된다는 뜻이다.
-      await withTimeout(firebaseDb.collection('kv').doc('ping_check').get(), 5000);
+      await withTimeout(firebaseDb.collection('kv').doc('ping_check').get(), attemptTimeouts[attempt-1]);
       firebaseLastError = null;
       return true;
     }catch(e){
       console.error(`[기기가동 기록서] Firebase 연결 시도 ${attempt}번째 실패`, e);
       firebaseDb = null;
       firebaseLastError = e;
-      if(attempt === 2) return false;
+      if(attempt === attemptTimeouts.length) return false;
     }
   }
   return false;
@@ -1201,6 +1207,7 @@ function updateModeBadge(){
   const badge = document.getElementById('mode-badge');
   if(!badge) return;
   const mode = storageModeLabel();
+  const reconnectBtn = document.getElementById('reconnect-btn');
   if(mode === 'firebase'){
     badge.textContent = 'Firebase 연결됨 (공유됨)';
     badge.className = 'mode-badge server';
@@ -1213,6 +1220,50 @@ function updateModeBadge(){
     badge.textContent = '공유 저장소';
     badge.className = 'mode-badge';
     badge.title = '';
+  }
+  // Firebase 설정 자체가 비어있으면(코드 문제) 재연결 버튼이 의미가 없으니 숨긴다.
+  // 그 외 local 모드(네트워크/규칙 등 일시적 원인일 가능성)에서는 새로고침 없이
+  // 바로 재시도할 수 있게 버튼을 보여준다.
+  if(reconnectBtn) reconnectBtn.style.display = (mode === 'local' && isFirebaseConfigured()) ? '' : 'none';
+}
+
+// 사이드바 하단 안내문구를 현재 저장소 모드에 맞게 갱신한다.
+// enterApp()에서 처음 진입할 때와, "다시 연결 시도" 버튼을 눌러 재연결에
+// 성공/실패했을 때 모두 이 함수로 갱신해 문구가 항상 최신 상태를 반영하게 한다.
+function refreshSidebarFootNote(){
+  const note = document.getElementById('sidebar-foot-note');
+  if(!note) return;
+  const mode = storageModeLabel();
+  note.textContent = mode === 'firebase'
+    ? 'Firebase 클라우드 저장소에 연결됨. 모든 사용자·기기에 공유됩니다.'
+    : hasArtifactStorage()
+    ? '데이터는 이 아티팩트를 여는 모든 사용자에게 공유됩니다.'
+    : `⚠️ Firebase 연결 실패: 이 브라우저에만 저장됩니다. (${localModeReasonText()})`;
+}
+
+let reconnectInProgress = false;
+async function retryFirebaseConnection(){
+  if(reconnectInProgress) return;
+  reconnectInProgress = true;
+  const btn = document.getElementById('reconnect-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '🔄 연결 시도 중...'; }
+  try{
+    const wasFirebase = storageModeLabel() === 'firebase';
+    useFirebase = await initFirebaseBackend();
+    updateModeBadge();
+    refreshSidebarFootNote();
+    if(useFirebase && !wasFirebase){
+      toast('Firebase 연결 성공! 이제 여러 명이 동시에 사용할 수 있습니다.');
+      // 재연결 직후에는 이 브라우저가 그동안 로컬에만 들고 있던 목록이 최신이
+      // 아닐 수 있으니, 공유 저장소 기준으로 다시 불러와 화면을 맞춘다.
+      await loadSheetIndex();
+      renderRecordList();
+    } else if(!useFirebase){
+      toast('여전히 연결할 수 없습니다: ' + localModeReasonText(), true);
+    }
+  } finally {
+    reconnectInProgress = false;
+    if(btn){ btn.disabled = false; btn.textContent = '🔄 다시 연결 시도'; }
   }
 }
 
@@ -1363,6 +1414,32 @@ async function loadSheetIndex(){
 }
 async function saveSheetIndex(){
   await stSet('sheet-index', JSON.stringify(sheetIndex), true);
+}
+
+// 저장소에서 sheet-index를 (이 브라우저가 들고 있는 캐시가 아니라) 다시 읽어온다.
+async function fetchLatestSheetIndex(){
+  const r = await stGet('sheet-index', true);
+  try{ return r ? JSON.parse(r.value) : []; }catch(e){ return []; }
+}
+
+// sheet-index를 안전하게 갱신하는 헬퍼.
+// 문제였던 점: sheet-index는 모든 기록의 목록을 담은 "문서 하나"라서, 예전 코드는
+// 이 브라우저가 예전에 불러와 들고 있던 sheetIndex 배열을 그대로 통째로 다시 저장했다.
+// 그런데 그 사이에 다른 PC가 다른 기록을 저장/삭제했다면, 그 변경사항은 이 저장에
+// 덮어써져서 사라져버린다 (예: A가 목록을 불러온 뒤, B가 자기 기록을 저장 → 목록에 반영됨,
+// 그 후 A가 자기 기록을 저장하면 A가 갖고 있던 오래된 목록으로 B의 변경사항까지 덮어씀).
+// 그래서 저장 직전에 항상 최신 목록을 다시 읽어와, 이번에 바뀐 항목만 반영해서 저장한다.
+async function updateSheetIndex(upserts, removeIds){
+  let latest = await fetchLatestSheetIndex();
+  if(removeIds && removeIds.length){
+    latest = latest.filter(s=>!removeIds.includes(s.id));
+  }
+  (upserts||[]).forEach(entry=>{
+    const i = latest.findIndex(s=>s.id===entry.id);
+    if(i>-1) latest[i] = entry; else latest.push(entry);
+  });
+  sheetIndex = latest;
+  await saveSheetIndex();
 }
 
 async function loadSheetById(id){
@@ -1539,6 +1616,8 @@ async function initLoginScreen(){
   renderLoginExtras();
 }
 
+document.getElementById('reconnect-btn').addEventListener('click', retryFirebaseConnection);
+
 document.getElementById('logout-btn').addEventListener('click', async ()=>{
   if(isDirty && !confirm('저장하지 않은 변경사항이 있습니다. 로그아웃하시겠습니까?')) return;
   await releaseSession();
@@ -1563,11 +1642,7 @@ async function enterApp(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').classList.add('active');
   document.getElementById('current-user-label').textContent = displayName(currentUser);
-  document.getElementById('sidebar-foot-note').textContent = storageModeLabel() === 'firebase'
-    ? 'Firebase 클라우드 저장소에 연결됨. 모든 사용자·기기에 공유됩니다.'
-    : hasArtifactStorage()
-    ? '데이터는 이 아티팩트를 여는 모든 사용자에게 공유됩니다.'
-    : `⚠️ Firebase 연결 실패: 이 브라우저에만 저장됩니다. (${localModeReasonText()})`;
+  refreshSidebarFootNote();
 
   updateReadOnlyUI();
   updateModeBadge();
@@ -1788,8 +1863,7 @@ async function renderRecordList(filter){
       const meta = sheetIndex.find(s=>s.id===id);
       if(!confirm(`"${meta.device} / ${meta.year}년 ${meta.month}월" 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return;
       await deleteSheetById(id);
-      sheetIndex = sheetIndex.filter(s=>s.id!==id);
-      await saveSheetIndex();
+      await updateSheetIndex(null, [id]);
       if(currentSheetId===id){
         await resetActiveSheetView();
       }
@@ -1862,7 +1936,7 @@ async function openSheet(id, metaIfNew){
     const idxMeta = sheetIndex.find(s=>s.id===id);
     if(idxMeta && !idxMeta.product){
       idxMeta.product = data.product;
-      saveSheetIndex();
+      await updateSheetIndex([idxMeta], null);
     }
   }
   currentSheet = data;
@@ -2432,7 +2506,6 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
 
   try{
     await saveSheetById(currentSheetId, currentSheet);
-    const metaIdx = sheetIndex.findIndex(s=>s.id===currentSheetId);
     const meta = {
       id: currentSheetId,
       year: currentSheet.year, month: currentSheet.month,
@@ -2442,8 +2515,10 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
       approver: currentSheet.approver || '',
       manager: currentSheet.manager || ''
     };
-    if(metaIdx>-1) sheetIndex[metaIdx] = meta; else sheetIndex.push(meta);
-    await saveSheetIndex();
+    // 다른 사람이 같은 순간에 다른 기록을 저장했더라도 그 변경사항이 사라지지 않도록,
+    // 이 브라우저가 들고 있던 오래된 목록을 통째로 덮어쓰지 않고 최신 목록에
+    // 이번 항목만 반영해서 저장한다 (updateSheetIndex 참고).
+    await updateSheetIndex([meta], null);
     setDirty(false);
     isEditingExisting = true;
     rowSnapshotMap = new Map();
@@ -2905,11 +2980,17 @@ async function generateSheetsForSelectedMonth(){
     });
   });
 
+  // 다른 사람이 방금 만든 기록과 중복 생성되지 않도록, 시작 시점에 최신 목록을
+  // 한 번 더 확인한다 (이 브라우저가 들고 있던 오래된 목록만 보고 판단하지 않음).
+  const latestIndex = await fetchLatestSheetIndex();
+  const existingIds = new Set(latestIndex.map(s=>s.id));
+
   let created = 0, skipped = 0;
+  const newEntries = [];
   for(const t of targets){
     const location = locationForDevice(t.device) || '';
     const id = makeSheetId(targetYear, targetMonth, t.device, location);
-    if(sheetIndex.some(s=>s.id===id)){ skipped++; continue; }
+    if(existingIds.has(id)){ skipped++; continue; }
     const nowIso = new Date().toISOString();
     const data = {
       year: targetYear, month: targetMonth,
@@ -2919,7 +3000,7 @@ async function generateSheetsForSelectedMonth(){
       updatedAt: nowIso
     };
     await saveSheetById(id, data);
-    sheetIndex.push({
+    newEntries.push({
       id, year: targetYear, month: targetMonth,
       product: t.product, device: t.device, location: location,
       updatedAt: nowIso,
@@ -2927,7 +3008,7 @@ async function generateSheetsForSelectedMonth(){
     });
     created++;
   }
-  if(created > 0) await saveSheetIndex();
+  if(created > 0) await updateSheetIndex(newEntries, null);
   refreshRecordList();
   toast(`${targetYear}년 ${targetMonth}월 기록 ${created}건 생성됨` + (skipped ? ` (이미 있던 ${skipped}건은 건너뜀)` : ''));
 }
