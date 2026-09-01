@@ -1861,7 +1861,15 @@ async function renderRecordList(filter){
       if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
       const id = btn.dataset.del;
       const meta = sheetIndex.find(s=>s.id===id);
-      if(!confirm(`"${meta.device} / ${meta.year}년 ${meta.month}월" 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return;
+      // 실수로 삭제 버튼을 눌러 되돌릴 수 없는 기록이 사라지는 사고를 막기 위해,
+      // 단순 확인창(OK만 누르면 지워짐) 대신 "삭제"라는 글자를 정확히 입력해야만
+      // 실제로 삭제되도록 한다.
+      const typed = prompt(`"${meta.device} / ${meta.year}년 ${meta.month}월" 기록을 삭제합니다. 되돌릴 수 없습니다.\n\n계속하려면 아래에 "삭제"라고 입력하세요.`);
+      if(typed === null) return; // 취소
+      if(typed.trim() !== '삭제'){
+        toast('입력한 내용이 "삭제"와 일치하지 않아 취소되었습니다.', true);
+        return;
+      }
       await deleteSheetById(id);
       await updateSheetIndex(null, [id]);
       if(currentSheetId===id){
@@ -2566,6 +2574,11 @@ function xCell(ref, style, value){
 
 const COL_LETTERS = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
 
+// 담당자/승인자 이름 칸(엑셀)에서 이름 아래에 서명 날짜를 줄바꿈으로 표시할 때 쓰는 서식.
+// buildMultiSheetWorkbookBlob에서 styles.xml에 추가해두는 서식(기존 이름칸 서식과
+// 테두리/정렬은 동일하고 wrapText만 켜짐)과 반드시 같은 인덱스여야 한다.
+const SIGN_NAME_DATE_STYLE = '19';
+
 // 한 페이지 블록의 총 행 수: 머리글 4행 + 데이터 PRINT_ROWS_PER_PAGE(20)행
 // + 비고/담당자/승인자 2행 + ISO문서번호/페이지표시 1행 = 27행.
 // (실제 스캔 원본 한 장이 이 27행으로 A4 한 페이지를 정확히 채우도록
@@ -2639,8 +2652,14 @@ function buildSheetXml(sheet){
   const rowHeightForData = PRINT_FIXED_ROW_HEIGHT;
 
   const deviceText = sheet.device || '';
+  // 엑셀 담당자/승인자 칸: 이름 아래에 서명 날짜(YYYY-MM-DD)를 줄바꿈으로 함께 표시한다.
+  // 날짜가 없는(예전에 서명된) 기록은 이름만 표시된다.
   const managerName = sheet.manager ? displayName(sheet.manager) : '';
   const approverName = sheet.approver ? displayName(sheet.approver) : '';
+  const managerDateText = sheet.manager ? formatSignDate(sheet.managerDate) : '';
+  const approverDateText = sheet.approver ? formatSignDate(sheet.approverDate) : '';
+  const managerCellText = managerDateText ? `${managerName}\n${managerDateText}` : managerName;
+  const approverCellText = approverDateText ? `${approverName}\n${approverDateText}` : approverName;
 
   const rowsXml = [];
   const merges = [];
@@ -2668,9 +2687,13 @@ function buildSheetXml(sheet){
       + `</row>`);
 
     // 기기명 / 설치장소
+    // 기기명은 "설치장소"와 똑같이 라벨 칸과 값 칸을 분리한다 (예전엔 "기기명 RS-201"처럼
+    // 한 칸에 라벨+값이 붙어 있었는데, 설치장소처럼 두 칸으로 나눠 표에 선을 넣어달라는 요청).
     rowsXml.push(`<row r="${deviceLocRow}" spans="1:13" s="11" customFormat="1" ht="17.25" customHeight="1" x14ac:dyDescent="0.3">`
-      + xCell(`A${deviceLocRow}`,'18', `기기명 ${deviceText}`)
-      + xCell(`B${deviceLocRow}`,'18','') + xCell(`C${deviceLocRow}`,'18','') + xCell(`D${deviceLocRow}`,'18','') + xCell(`E${deviceLocRow}`,'18','')
+      + xCell(`A${deviceLocRow}`,'18', '기기명')
+      + xCell(`B${deviceLocRow}`,'18','')
+      + xCell(`C${deviceLocRow}`,'18', deviceText)
+      + xCell(`D${deviceLocRow}`,'18','') + xCell(`E${deviceLocRow}`,'18','')
       + xCell(`F${deviceLocRow}`,'18','설치장소')
       + xCell(`G${deviceLocRow}`,'18','') + xCell(`H${deviceLocRow}`,'18','') + xCell(`I${deviceLocRow}`,'18','')
       + xCell(`J${deviceLocRow}`,'18', sheet.location || '')
@@ -2711,10 +2734,13 @@ function buildSheetXml(sheet){
         + `</row>`);
     });
 
-    // 하단: 비고 / 담당자 / 승인자 (2행 병합) — 실제 값은 마지막 페이지에만
+    // 하단: 비고 / 담당자 / 승인자 (2행 병합)
+    // 비고는 예전처럼 마지막 페이지에만 채우지만, 담당자/승인자 서명(이름+날짜)은
+    // 페이지가 여러 장으로 나뉘어도 매 페이지 하단에 똑같이 표시한다
+    // (1페이지는 서명 없이, 2페이지부터만 서명이 보이던 것을 고침).
     const pageFooterNote = isLastPage ? (sheet.footerNote || '') : '';
-    const pageManagerName = isLastPage ? managerName : '';
-    const pageApproverName = isLastPage ? approverName : '';
+    const pageManagerName = managerCellText;
+    const pageApproverName = approverCellText;
     rowsXml.push(`<row r="${footerLabelRow}" spans="1:13" x14ac:dyDescent="0.3">`
       + xCell(`A${footerLabelRow}`,'2','비고')
       + xCell(`B${footerLabelRow}`,'2', pageFooterNote)
@@ -2722,10 +2748,10 @@ function buildSheetXml(sheet){
       + xCell(`E${footerLabelRow}`,'2','') + xCell(`F${footerLabelRow}`,'2','')
       + xCell(`G${footerLabelRow}`,'2','')
       + xCell(`H${footerLabelRow}`,'2','담당자')
-      + xCell(`I${footerLabelRow}`,'2', pageManagerName)
+      + xCell(`I${footerLabelRow}`, SIGN_NAME_DATE_STYLE, pageManagerName)
       + xCell(`J${footerLabelRow}`,'2','')
       + xCell(`K${footerLabelRow}`,'2','승인자')
-      + xCell(`L${footerLabelRow}`,'2', pageApproverName)
+      + xCell(`L${footerLabelRow}`, SIGN_NAME_DATE_STYLE, pageApproverName)
       + xCell(`M${footerLabelRow}`,'2','')
       + `</row>`);
     rowsXml.push(`<row r="${footerEndRow}" spans="1:13" x14ac:dyDescent="0.3">`
@@ -2742,7 +2768,7 @@ function buildSheetXml(sheet){
 
     merges.push(
       `A${titleRow}:M${titleRow}`, `A${yearMonthRow}:M${yearMonthRow}`,
-      `A${deviceLocRow}:E${deviceLocRow}`, `F${deviceLocRow}:I${deviceLocRow}`, `J${deviceLocRow}:M${deviceLocRow}`,
+      `A${deviceLocRow}:B${deviceLocRow}`, `C${deviceLocRow}:E${deviceLocRow}`, `F${deviceLocRow}:I${deviceLocRow}`, `J${deviceLocRow}:M${deviceLocRow}`,
       `C${colHeaderRow}:D${colHeaderRow}`, `H${colHeaderRow}:M${colHeaderRow}`
     );
     rows.forEach((r,i)=>{
@@ -2869,9 +2895,12 @@ async function buildMultiSheetWorkbookBlob(sheetList){
   // "셀에 맞게 줄임(shrinkToFit)" 스타일을 하나 추가 (워크북 전체에서 공유되는 서식이라 한 번만 추가)
   let stylesXml = await zip.file('xl/styles.xml').async('string');
   stylesXml = stylesXml
-    .replace('<cellXfs count="13">', '<cellXfs count="19">')
-    .replace('</cellXfs>', '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="4" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs>');
+    .replace('<cellXfs count="13">', '<cellXfs count="20">')
+    .replace('</cellXfs>', '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="4" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs>');
   zip.file('xl/styles.xml', stylesXml);
+  // 위에서 추가한 마지막 서식(인덱스 19, = SIGN_NAME_DATE_STYLE)은 기존
+  // "담당자/승인자 이름" 칸(스타일 2)과 테두리/정렬은 같지만 wrapText만 켜둔 것 —
+  // 이름 아래에 서명 날짜를 줄바꿈으로 함께 넣을 때(buildSheetXml) 이 스타일을 쓴다.
 
   // 원본 템플릿에 있던 단일 시트 관련 파츠는 여기서 새로 만들 것이므로 정리
   zip.remove('xl/printerSettings/printerSettings1.bin');
