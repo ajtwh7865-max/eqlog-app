@@ -527,6 +527,37 @@
   .row-actions{display:flex;gap:6px;justify-content:center;}
   .mini-btn{font-size:12px;padding:5px 11px;border-radius:4px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;}
   .mini-btn:hover{background:var(--off-white);}
+
+  /* ---------- 계정 권한 관리: 서명 권한(작업자/확인자/담당자) 드롭다운 ---------- */
+  .role-dd{position:relative;display:inline-block;text-align:left;}
+  .role-dd-btn{
+    font-size:12px;padding:6px 10px;border-radius:5px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    min-width:150px;justify-content:space-between;
+  }
+  .role-dd-btn.open{border-color:var(--accent-1);}
+  .role-dd-btn .arrow{color:var(--muted);font-size:10px;}
+  .role-chip{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--chip-bg);color:var(--chip-ink);margin-right:2px;}
+  .role-chip.empty{background:var(--off-white);color:var(--muted);font-weight:500;}
+  .role-dd-panel{
+    position:absolute;top:calc(100% + 6px);left:0;z-index:20;
+    background:#fff;border:1px solid var(--card-line);border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+    padding:10px 6px;width:210px;
+  }
+  .role-dd-panel .opt{
+    display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:5px;font-size:13px;cursor:pointer;line-height:1.4;
+  }
+  .role-dd-panel .opt:hover{background:var(--off-white);}
+  .role-dd-panel .opt input{width:15px;height:15px;accent-color:var(--accent-1);cursor:pointer;flex:none;margin-top:2px;}
+  .role-dd-panel .opt.disabled{opacity:.5;cursor:not-allowed;}
+  .role-dd-panel .opt.disabled input{cursor:not-allowed;}
+  .role-dd-panel .sep{height:1px;background:var(--line-soft);margin:6px 4px;}
+  .role-dd-panel .apply-row{padding:6px 8px 2px 8px;}
+  .role-dd-panel .apply-row button{
+    width:100%;background:var(--accent-1);color:#fff;border:none;border-radius:5px;
+    padding:8px 0;font-size:12.5px;font-weight:700;cursor:pointer;
+  }
   .mini-btn.del{background:var(--red-bg);border-color:#f3c9c9;color:var(--red);}
   .mini-btn.del:hover{background:#f6d5d5;}
 
@@ -621,13 +652,14 @@
       <div class="readonly-banner" id="readonly-banner" style="display:none;"></div>
 
       <div class="tabs">
-        <button type="button" class="tab active" data-tab="write">월별기기가동생성</button>
-        <button type="button" class="tab" data-tab="list">저장된 기록</button>
+        <button type="button" class="tab" data-tab="write">월별기기가동생성</button>
+        <button type="button" class="tab active" data-tab="list">저장된 기록</button>
         <button type="button" class="tab" data-tab="export">월별 엑셀 내보내기</button>
+        <button type="button" class="tab" data-tab="accounts" id="tab-accounts-btn" style="display:none;">계정 권한 관리</button>
       </div>
 
       <!-- ---------- 월별기기가동생성 (기록 작성) ---------- -->
-      <div class="tab-panel active" id="panel-write">
+      <div class="tab-panel" id="panel-write">
         <div class="toolbar">
           <div class="tb-field">
             <label>년도</label>
@@ -660,12 +692,13 @@
       </div>
 
       <!-- ---------- 저장된 기록 ---------- -->
-      <div class="tab-panel" id="panel-list">
+      <div class="tab-panel active" id="panel-list">
         <div class="list-toolbar">
           <select id="record-filter-year"></select>
           <select id="record-filter-month"></select>
           <select id="record-filter-product"></select>
           <input type="text" id="record-search-input" placeholder="기기명, 설치장소 검색">
+          <button class="btn btn-danger" id="record-filter-delete-btn" style="margin-left:auto;">🗑️ 조회내역삭제</button>
         </div>
         <div class="list-count">저장된 기록 <span id="record-total-count"></span></div>
         <div class="table-scroll">
@@ -701,6 +734,24 @@
           <div class="export-actions">
             <button class="btn-excel" id="prev-month-save-btn">📊 엑셀로 내보내기</button>
           </div>
+        </div>
+      </div>
+
+      <!-- ---------- 계정 권한 관리 (ccs 전용) ---------- -->
+      <div class="tab-panel" id="panel-accounts">
+        <div class="export-note">
+          새로 만든 계정은 기본적으로 <b>보기 전용</b>(기록 열람만 가능, 작성/수정/삭제 불가)으로 시작합니다.
+          여기서 편집 권한을 켜주면 해당 계정도 기록을 작성/수정할 수 있습니다.
+        </div>
+        <div class="table-scroll" style="overflow:visible;">
+          <table class="plain">
+            <thead>
+              <tr>
+                <th>아이디</th><th>이름</th><th>편집 권한</th><th>서명 권한</th><th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="accounts-table-body"></tbody>
+          </table>
         </div>
       </div>
 
@@ -898,22 +949,43 @@ function deviceTypeRank(device){
   return 99;
 }
 
-const WORKER_CODES = ['ajtwh7481','psw','khd4323','leel119'];
-const MANAGER_CODES = ['leel119','khd4323']; // 담당자: 김봉수, 김희두
-const APPROVER_CODES = ['ccs']; // 승인자: 최창식
-const CHECKER_CODES = ['ajtwh7481','psw','khd4323','leel119']; // 확인자(표 내 서명): 작업자 4명(조권희,박상욱,김희두,김봉수)과 동일. 같은 행에서 작업자 본인은 renderCheckerCell 로직에서 자동 제외되므로 실제로는 4명 중 3명만 서명 가능
+const APPROVER_CODES = ['ccs']; // 승인자: 최창식 (계정 권한 관리 화면에서는 바꿀 수 없게 고정해둔다)
+
+// 계정 권한(전체 편집/보기전용)을 관리할 수 있는 관리자 계정 목록.
+// ccs(최창식)와 master 두 계정 모두 "계정 권한 관리" 탭에 접근할 수 있고,
+// 항상 편집 가능(editor) 상태로 취급되어 스스로를 보기 전용으로 잠글 수 없다.
+const ADMIN_CODES = ['ccs','master'];
+
+// [예전 방식] 작업자/확인자/담당자 서명 권한을 코드 안 배열(WORKER_CODES 등)에
+// 아이디를 직접 넣어 하드코딩했었다. 지금은 "계정 권한 관리" 탭에서 계정별로
+// 켜고 끌 수 있는 signRoles(각 계정 객체의 { worker, checker, manager } 필드)로
+// 바뀌었다. 아래 값은 그 필드가 아직 없는(이번 업데이트 이전에 만들어진) 계정에
+// 대해서만 "예전과 동일하게" 취급하기 위한 기본값이다 — 기존 사용자 보호용.
+const LEGACY_DEFAULT_SIGN_ROLES = {
+  'ajtwh7481': { worker:true, checker:true, manager:false },
+  'psw':       { worker:true, checker:true, manager:false },
+  'khd4323':   { worker:true, checker:true, manager:true },
+  'leel119':   { worker:true, checker:true, manager:true },
+  'ccs':       { worker:true, checker:true, manager:true },
+  'master':    { worker:true, checker:true, manager:true },
+};
+function defaultSignRolesFor(username){
+  return LEGACY_DEFAULT_SIGN_ROLES[username] || { worker:false, checker:false, manager:false };
+}
+
+let currentUserSignRoles = { worker:false, checker:false, manager:false }; // establishSession()에서 채워짐
 
 function canSelectManager(){
-  return !!currentUser && MANAGER_CODES.includes(currentUser);
+  return !!currentUser && !!currentUserSignRoles.manager;
 }
 function canSelectApprover(){
   return !!currentUser && APPROVER_CODES.includes(currentUser);
 }
 function canSelectChecker(){
-  return !!currentUser && CHECKER_CODES.includes(currentUser);
+  return !!currentUser && !!currentUserSignRoles.checker;
 }
 function canSelectWorker(){
-  return !!currentUser && WORKER_CODES.includes(currentUser);
+  return !!currentUser && !!currentUserSignRoles.worker;
 }
 
 // 아이디 -> 표시 이름
@@ -922,7 +994,8 @@ const USER_NAMES = {
   'ccs':'최창식',
   'khd4323':'김희두',
   'psw':'박상욱',
-  'ajtwh7481':'조권희'
+  'ajtwh7481':'조권희',
+  'master':'마스터관리자'
 };
 function displayName(code){
   return USER_NAMES[code] || code || '';
@@ -1367,15 +1440,16 @@ async function loadSheetIndex(){
     }
   });
 
-  // 정리 1: 정식 7가지 품목코드(BASE_PRODUCTS)에 속하지 않는 기록은 삭제
-  //         (신규 기록 생성 시엔 항상 이 7개 중에서만 선택 가능하므로, 여기 걸리는
-  //          항목은 예전 오류/테스트 데이터로 간주해 제거한다)
-  const invalidIds = sheetIndex.filter(s=>!BASE_PRODUCTS.includes(s.product)).map(s=>s.id);
-  if(invalidIds.length){
-    for(const id of invalidIds){ await deleteSheetById(id); }
-    sheetIndex = sheetIndex.filter(s=>!invalidIds.includes(s.id));
-    changed = true;
-  }
+  // [삭제됨] 예전에는 여기서 정식 7가지 품목코드(BASE_PRODUCTS)에 속하지 않는
+  // 기록을 "예전 오류/테스트 데이터"로 간주해 Firebase에서 자동으로 영구 삭제했다.
+  // 그런데 BASE_PRODUCTS는 코드에 하드코딩된 배열이라, 새 코드를 배포하면서 이
+  // 목록을 조금만 바꿔도(품목 추가/삭제/오타 수정 등) — 그 다음에 누군가 앱을
+  // 열자마자 이 로직이 실행되며 새 목록에 없는 품목코드로 저장된 기존 기록들이
+  // 전부 공유 저장소(Firebase)에서 삭제되어버리는 문제가 있었다("새 코드를 올릴
+  // 때마다 기존 기록이 사라진다"는 증상의 원인). 데이터를 자동으로 지우는 것은
+  // 너무 위험하므로, 이 정리 로직 자체를 제거했다. BASE_PRODUCTS에 없는 품목코드로
+  // 저장된 기록이 있어도 그냥 그대로 목록에 남겨두고 화면에 보여준다 — 실제로
+  // 정리가 필요하면 사용자가 화면에서 직접 삭제하도록 한다.
 
   // 정리 2: 같은 연/월/기기 조합이 중복 저장되어 있으면, 가장 최근에 수정된
   //         기록만 남기고 나머지는 삭제 (기기 위치값이 나중에 바뀌어 같은
@@ -1470,11 +1544,34 @@ function sheetHasData(data){
 }
 
 /* ============================================================
-   SESSION (동시 로그인 허용 — 차단/보기전용 없음)
+   SESSION / 계정 권한 (동시 로그인은 허용하되, 계정별 "보기 전용"
+   권한만 여기서 판단한다)
+   - 새로 가입한 계정은 기본적으로 role:'viewer'(보기 전용)로 생성된다
+     (아래 signup 처리부 참고). 기존에 role 필드 없이 저장돼 있던 계정은
+     그동안 실제 사용하던 계정들이라 그대로 편집 가능(editor) 상태로
+     취급한다("기존 계정에는 영향 없음").
+   - 편집 권한(role: 'editor')으로 바꿔주는 것은 관리자 계정(ADMIN_CODES: ccs,
+     master)만 "계정 권한 관리" 탭에서 할 수 있다.
 ============================================================ */
+let currentUserRole = 'editor'; // 'editor' | 'viewer' — 로그인 시 establishSession()에서 채워짐
+
 /** @returns {{ok:boolean}} */
 async function establishSession(){
-  isReadOnly = false;
+  const users = await loadUsers();
+  const found = users.find(u=>u.username===currentUser);
+  // role 필드가 아예 없는 예전 계정은 editor(편집 가능)로 간주 — 기존 사용자 보호.
+  const role = found && found.role === 'viewer' ? 'viewer' : 'editor';
+  // 관리자 계정(ccs, master)은 스스로를 보기 전용으로 잠글 수 없도록 항상 editor.
+  currentUserRole = ADMIN_CODES.includes(currentUser) ? 'editor' : role;
+  isReadOnly = (currentUserRole === 'viewer');
+
+  // signRoles 필드가 아직 없는 계정은 예전 하드코딩 배열과 동일했던 기본값을 쓴다.
+  const signRoles = (found && found.signRoles) ? found.signRoles : defaultSignRolesFor(currentUser);
+  currentUserSignRoles = {
+    worker: !!signRoles.worker,
+    checker: !!signRoles.checker,
+    manager: !!signRoles.manager,
+  };
   return { ok: true };
 }
 
@@ -1482,15 +1579,26 @@ async function releaseSession(){ /* no-op: 동시 로그인 제한이 없어 별
 
 function updateReadOnlyUI(){
   const banner = document.getElementById('readonly-banner');
-  if(banner) banner.style.display = 'none';
+  if(banner){
+    if(isReadOnly){
+      banner.style.display = 'block';
+      const adminNames = ADMIN_CODES.map(displayName).join('/');
+      banner.textContent = `👁 보기 전용 계정입니다. 기록을 작성/수정하려면 관리자(${adminNames})에게 편집 권한을 요청하세요.`;
+    } else {
+      banner.style.display = 'none';
+    }
+  }
   const sheetBanner = document.getElementById('sheet-lock-banner');
   if(sheetBanner) sheetBanner.style.display = 'none';
   const saveBtn = document.getElementById('save-btn');
-  if(saveBtn) saveBtn.disabled = false;
+  if(saveBtn) saveBtn.disabled = isReadOnly;
+
+  const accountsTabBtn = document.getElementById('tab-accounts-btn');
+  if(accountsTabBtn) accountsTabBtn.style.display = ADMIN_CODES.includes(currentUser) ? '' : 'none';
 }
 
 function isEditBlocked(){
-  return false;
+  return isReadOnly;
 }
 
 // 열려 있던 기록(currentSheet)을 닫고 화면을 "기록을 불러오세요" 초기 상태로
@@ -1559,7 +1667,9 @@ document.getElementById('login-form').addEventListener('submit', async (e)=>{
       showLoginError('이미 존재하는 아이디입니다.');
       return;
     }
-    users.push({ username, password });
+    // 새로 만드는 계정은 기본적으로 "보기 전용"(role:'viewer')으로 생성한다.
+    // 편집 권한은 관리자(ccs)가 "계정 권한 관리" 탭에서 나중에 부여해야 한다.
+    users.push({ username, password, role: 'viewer' });
     await saveUsers(users);
     currentUser = username;
     try{ localStorage.setItem(CURRENT_USER_LS_KEY, username); }catch(e){}
@@ -1589,7 +1699,7 @@ document.getElementById('login-form').addEventListener('submit', async (e)=>{
   enterApp();
 });
 
-const DEFAULT_ADMIN = { username: 'ajtwh7481', password: '1026' };
+const DEFAULT_ADMIN = { username: 'ajtwh7481', password: '1026', role: 'editor' };
 
 async function initLoginScreen(){
   let users = await loadUsers();
@@ -1655,7 +1765,10 @@ async function enterApp(){
   populateYearMonth();
   populateDeviceLocation();
   await loadSheetIndex();
-  renderRecordList();
+  // 로그인하면 "월별기기가동생성"(빈 양식 작성 화면)이 아니라 "저장된 기록" 목록이
+  // 바로 보이도록 한다 — 대부분의 사용자는 로그인 후 기존 기록을 먼저 확인하려는
+  // 경우가 많기 때문.
+  switchTab('list');
 }
 
 function locationForDevice(device){
@@ -1722,7 +1835,7 @@ function populateYearMonth(){
   [ySel, xySel].forEach(sel=>{
     if(!sel) return;
     sel.innerHTML='';
-    for(let y=thisYear-2; y<=thisYear+1; y++){
+    for(let y=thisYear-2; y<=thisYear+10; y++){
       const opt = document.createElement('option');
       opt.value=y; opt.textContent=y+'년';
       if(y===thisYear) opt.selected=true;
@@ -1747,7 +1860,7 @@ function populateYearMonth(){
   const fpSel = document.getElementById('record-filter-product');
   if(fySel){
     fySel.innerHTML = '<option value="">연도: 전체</option>' +
-      Array.from({length:4}, (_,i)=>thisYear-2+i).map(y=>`<option value="${y}">${y}년</option>`).join('');
+      Array.from({length:13}, (_,i)=>thisYear-2+i).map(y=>`<option value="${y}">${y}년</option>`).join('');
   }
   if(fmSel){
     fmSel.innerHTML = '<option value="">월: 전체</option>' +
@@ -1907,10 +2020,182 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.id === 'panel-'+name));
   if(name==='list') refreshRecordList();
+  if(name==='accounts') renderAccountsPanel();
 }
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click', ()=> switchTab(t.dataset.tab));
 });
+
+/* ============================================================
+   계정 권한 관리 (관리자 전용 탭: ADMIN_CODES = ccs, master)
+   - 새로 가입한 계정은 role:'viewer'(보기 전용)로 시작하고, 여기서
+     관리자가 "편집 허용" 버튼을 눌러야 role:'editor'로 바뀌어 기록을
+     작성/수정할 수 있게 된다.
+   - ccs/master 같은 관리자 계정은 establishSession()에서 항상 editor로
+     강제 처리되므로(스스로를 잠글 수 없게), 목록에서는 권한을 바꿀 수
+     없는 "관리자" 항목으로 고정 표시한다.
+   - 저장 직전에 항상 최신 목록을 다시 읽어와, 그 사이 다른 사람이 새
+     계정을 만들었어도 그 계정이 사라지지 않도록 한다(sheet-index와
+     동일한 이유의 안전장치).
+============================================================ */
+async function renderAccountsPanel(){
+  const tbody = document.getElementById('accounts-table-body');
+  if(!tbody) return;
+  if(!ADMIN_CODES.includes(currentUser)){
+    tbody.innerHTML = `<tr><td colspan="4" class="empty-note">관리자(${ADMIN_CODES.map(displayName).join('/')}) 계정만 볼 수 있습니다.</td></tr>`;
+    return;
+  }
+  const users = await loadUsers();
+  if(users.length === 0){
+    tbody.innerHTML = `<tr><td colspan="4" class="empty-note">등록된 계정이 없습니다.</td></tr>`;
+    return;
+  }
+  const ROLE_LABELS = { worker:'작업자', checker:'확인자', manager:'담당자' };
+
+  tbody.innerHTML = users.map(u=>{
+    const isAdmin = ADMIN_CODES.includes(u.username);
+    const isEditor = isAdmin || u.role !== 'viewer';
+    const isSelf = u.username === currentUser;
+    const signRoles = u.signRoles || defaultSignRolesFor(u.username);
+    const isApprover = APPROVER_CODES.includes(u.username);
+    const activeChips = ['worker','checker','manager'].filter(k=>signRoles[k]);
+    const chipsHtml = activeChips.length
+      ? activeChips.map(k=>`<span class="role-chip">${ROLE_LABELS[k]}</span>`).join('')
+      : `<span class="role-chip empty">권한 없음</span>`;
+    return `
+      <tr data-username="${escapeHtml(u.username)}">
+        <td>${escapeHtml(u.username)}</td>
+        <td>${escapeHtml(displayName(u.username))}</td>
+        <td><span class="badge ${isEditor ? 'done' : 'none'}">${isAdmin ? '관리자(항상 편집 가능)' : (isEditor ? '편집 가능' : '보기 전용')}</span></td>
+        <td>
+          <div class="role-dd">
+            <button type="button" class="role-dd-btn" data-role-toggle="${escapeHtml(u.username)}">
+              <span>${chipsHtml}</span>
+              <span class="arrow">▾</span>
+            </button>
+            <div class="role-dd-panel" data-role-panel="${escapeHtml(u.username)}" style="display:none;">
+              <label class="opt"><input type="checkbox" data-role-checkbox="worker" ${signRoles.worker?'checked':''}> 작업자</label>
+              <label class="opt"><input type="checkbox" data-role-checkbox="checker" ${signRoles.checker?'checked':''}> 확인자</label>
+              <label class="opt"><input type="checkbox" data-role-checkbox="manager" ${signRoles.manager?'checked':''}> 담당자</label>
+              <div class="sep"></div>
+              <label class="opt disabled"><input type="checkbox" disabled ${isApprover?'checked':''}> 승인자 (ccs 전용·고정)</label>
+              <div class="apply-row"><button type="button" data-role-apply="${escapeHtml(u.username)}">적용</button></div>
+            </div>
+          </div>
+        </td>
+        <td class="row-actions">
+          ${isSelf
+            ? `<span class="empty-note">현재 로그인 계정</span>`
+            : `
+              ${isAdmin
+                ? `<span class="empty-note">관리자 계정</span>`
+                : `<button type="button" class="mini-btn" data-toggle-role="${escapeHtml(u.username)}" data-next-role="${isEditor ? 'viewer' : 'editor'}">${isEditor ? '보기 전용으로 전환' : '편집 허용'}</button>`
+              }
+              <button type="button" class="mini-btn del" data-delete-user="${escapeHtml(u.username)}" data-is-admin="${isAdmin ? '1' : '0'}">🗑️ 삭제</button>
+            `
+          }
+        </td>
+      </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('[data-toggle-role]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      btn.disabled = true;
+      await setUserRole(btn.dataset.toggleRole, btn.dataset.nextRole);
+      toast(btn.dataset.nextRole === 'editor' ? `${btn.dataset.toggleRole}님에게 편집 권한을 부여했습니다.` : `${btn.dataset.toggleRole}님을 보기 전용으로 전환했습니다.`);
+      renderAccountsPanel();
+    });
+  });
+
+  // 계정 삭제. 본인 계정은 목록에 삭제 버튼 자체가 안 뜨도록 위에서 이미 막아뒀다
+  // (로그인 중에 스스로를 지워 즉시 로그아웃 상태가 되는 걸 방지).
+  // ccs/master 같은 관리자 계정도 삭제는 가능하지만(둘 중 한 명이 실수/테스트 계정을
+  // 정리하려는 경우 등), 그 계정 아이디로 다시 가입하면 언제든 admin 권한이 자동으로
+  // 복구되므로(ADMIN_CODES가 코드에 고정돼 있음) "완전히 못 쓰게 되는" 위험은 없다.
+  // 그래도 실수 방지를 위해 관리자 계정은 확인 문구를 다르게 보여준다.
+  tbody.querySelectorAll('[data-delete-user]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const username = btn.dataset.deleteUser;
+      const isAdminTarget = btn.dataset.isAdmin === '1';
+      const msg = isAdminTarget
+        ? `⚠ ${username}(${displayName(username)})은 관리자 계정입니다. 삭제하면 이 계정으로 로그인할 수 없게 됩니다(단, 같은 아이디로 다시 가입하면 관리자 권한은 자동으로 복구됩니다). 정말 삭제하시겠습니까?`
+        : `${username}(${displayName(username)}) 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없으며, 해당 계정은 더 이상 로그인할 수 없게 됩니다.`;
+      if(!confirm(msg)) return;
+      btn.disabled = true;
+      await deleteUserAccount(username);
+      toast(`${username} 계정을 삭제했습니다.`);
+      renderAccountsPanel();
+    });
+  });
+
+  // 서명 권한 드롭다운: 버튼을 누르면 그 계정의 패널만 열고 나머지는 닫는다.
+  tbody.querySelectorAll('[data-role-toggle]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const username = btn.dataset.roleToggle;
+      const panel = tbody.querySelector(`[data-role-panel="${CSS.escape(username)}"]`);
+      const willOpen = panel.style.display === 'none';
+      tbody.querySelectorAll('.role-dd-panel').forEach(p=>{ p.style.display='none'; });
+      tbody.querySelectorAll('.role-dd-btn').forEach(b=>{ b.classList.remove('open'); b.querySelector('.arrow').textContent='▾'; });
+      if(willOpen){
+        panel.style.display = 'block';
+        btn.classList.add('open');
+        btn.querySelector('.arrow').textContent = '▴';
+      }
+    });
+  });
+  // 적용 버튼: 체크박스 3개(작업자/확인자/담당자) 상태를 읽어 저장한다.
+  tbody.querySelectorAll('[data-role-apply]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const username = btn.dataset.roleApply;
+      const panel = tbody.querySelector(`[data-role-panel="${CSS.escape(username)}"]`);
+      const roles = {
+        worker: panel.querySelector('[data-role-checkbox="worker"]').checked,
+        checker: panel.querySelector('[data-role-checkbox="checker"]').checked,
+        manager: panel.querySelector('[data-role-checkbox="manager"]').checked,
+      };
+      btn.disabled = true;
+      await setUserSignRoles(username, roles);
+      toast(`${username}님의 서명 권한을 저장했습니다.`);
+      renderAccountsPanel();
+    });
+  });
+}
+
+// 패널 바깥을 클릭하면 열려있는 서명 권한 드롭다운을 닫는다.
+// (렌더링마다 새로 등록하면 리스너가 계속 쌓이므로, 스크립트 로드 시 한 번만 등록한다)
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('.role-dd-panel').forEach(p=>{ p.style.display='none'; });
+  document.querySelectorAll('.role-dd-btn').forEach(b=>{ b.classList.remove('open'); const a=b.querySelector('.arrow'); if(a) a.textContent='▾'; });
+});
+
+async function setUserSignRoles(username, roles){
+  const latest = await loadUsers();
+  const u = latest.find(x=>x.username===username);
+  if(!u) return;
+  u.signRoles = { worker: !!roles.worker, checker: !!roles.checker, manager: !!roles.manager };
+  await saveUsers(latest);
+}
+
+async function setUserRole(username, role){
+  // sheet-index와 마찬가지로, 쓰기 직전에 최신 목록을 다시 읽어와 그 사이의
+  // 다른 변경(새 계정 가입 등)을 덮어쓰지 않게 한다.
+  const latest = await loadUsers();
+  const u = latest.find(x=>x.username===username);
+  if(!u) return;
+  u.role = role;
+  await saveUsers(latest);
+}
+
+async function deleteUserAccount(username){
+  // 다른 관리 함수들과 동일하게, 저장 직전에 최신 목록을 다시 읽어와 그 사이의
+  // 다른 변경(새 계정 가입 등)을 덮어쓰지 않게 한다.
+  const latest = await loadUsers();
+  const filtered = latest.filter(u=>u.username!==username);
+  if(filtered.length === latest.length) return; // 이미 없는 계정
+  await saveUsers(filtered);
+}
 
 function escapeHtml(str){
   return String(str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2187,7 +2472,7 @@ function hasRowMissingWorkerOrChecker(rows){
 }
 
 // 담당자 서명칸: 작성된 모든 행에 작업자/확인자 서명이 다 돼 있어야 하고, 로그인
-// 계정이 담당자(MANAGER_CODES)면 "서명" 버튼을 눌러 본인 이름으로 바로 서명한다
+// 계정이 담당자 권한(signRoles.manager)이 있으면 "서명" 버튼을 눌러 본인 이름으로 바로 서명한다
 // (목록에서 고르는 방식이 아니라, 로그인한 계정 이름이 그대로 들어감).
 function renderManagerSign(box, s, approverBox){
   renderSignSlot(box, {
@@ -2229,12 +2514,12 @@ function formatSignDate(iso){
 
 /* ============================================================
    WORKER / CHECKER SIGN CELLS
-   - 작업자는 WORKER_CODES(조권희,박상욱,김희두,김봉수) 계정만 서명 가능,
-     그 중 로그인한 본인 계정으로만 서명됨 (아이디 저장, 화면엔 이름 표시).
-     최창식(ccs)은 WORKER_CODES에 없으므로 표 안 작업자 서명 불가.
+   - 작업자는 로그인 계정의 signRoles.worker가 켜져 있어야 서명 가능하며,
+     로그인한 본인 계정으로만 서명됨 (아이디 저장, 화면엔 이름 표시).
+     이 권한은 "계정 권한 관리" 탭(관리자: ccs, master)에서 계정별로 켜고 끌 수 있다.
    - 확인자는 작업자 서명이 먼저 있어야 하고, 작업자와 다른 계정이면서
-     CHECKER_CODES(작업자 4명: 조권희,박상욱,김희두,김봉수)로 로그인해야만 서명 버튼이 활성화됨.
-     같은 행에 작업자로 서명한 본인은 확인자로 서명 불가 (최창식은 승인자 전용, 확인자 목록에 없음)
+     signRoles.checker가 켜진 계정으로 로그인해야만 서명 버튼이 활성화됨.
+     같은 행에 작업자로 서명한 본인은 확인자로 서명 불가.
 ============================================================ */
 // 표 안에서 작업자/확인자 서명이 바뀔 때마다, 하단 담당자/승인자 칸도 즉시 다시 그려서
 // "작업자/확인자 서명이 없는 행이 있습니다" 안내문구가 실시간으로 갱신되게 한다
@@ -2289,7 +2574,7 @@ function createRowEl(rowObj){
   dateInput.type = 'text';
   dateInput.value = rowObj.date || '';
   dateInput.dataset.raw = deriveRawFromFormatted(rowObj.date || '');
-  dateInput.placeholder = '숫자만 입력 (예:260801)';
+  dateInput.placeholder = '';
   dateInput.readOnly = isEditBlocked();
   dateInput.addEventListener('input', (e)=>{
     let raw = dateInput.dataset.raw || '';
@@ -2321,7 +2606,7 @@ function createRowEl(rowObj){
   const startInput = document.createElement('input');
   startInput.type = 'text';
   startInput.value = rowObj.timeStart || '';
-  startInput.placeholder = '작업시작(예:0930)';
+  startInput.placeholder = '';
   startInput.readOnly = isEditBlocked();
   startInput.addEventListener('input', ()=>{
     const formatted = autoFormatTime(startInput.value);
@@ -2337,7 +2622,7 @@ function createRowEl(rowObj){
   const endInput = document.createElement('input');
   endInput.type = 'text';
   endInput.value = rowObj.timeEnd || '';
-  endInput.placeholder = '작업종료(예:1730)';
+  endInput.placeholder = '';
   endInput.readOnly = isEditBlocked();
   endInput.addEventListener('input', ()=>{
     const formatted = autoFormatTime(endInput.value);
@@ -2376,7 +2661,7 @@ function createRowEl(rowObj){
   const mfgNumInput = document.createElement('input');
   mfgNumInput.type = 'text';
   mfgNumInput.className = 'mfg-num';
-  mfgNumInput.placeholder = '번호 입력 (예: 260701)';
+  mfgNumInput.placeholder = '';
   mfgNumInput.readOnly = isEditBlocked();
 
   // 저장된 "품목코드-번호" 문자열을 드롭다운값 / 번호값으로 분리
@@ -3086,6 +3371,82 @@ document.getElementById('gen-selected-month-btn').addEventListener('click', asyn
   }catch(e){
     console.error(e);
     toast('선택한 연월 기록 생성 중 오류가 발생했습니다. 다시 시도해주세요.', true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
+/* ============================================================
+   "저장된 기록" 탭 — 필터(년도/월/품목) 기준 삭제
+   - record-filter-year / record-filter-month / record-filter-product
+     드롭다운에서 선택된 값을 그대로 조건으로 사용해서, 조건에 맞는
+     기록을 한 번에 삭제한다(검색어(record-search-input)는 조건에
+     포함하지 않음 — 필터 3개만 기준으로 삼는다).
+   - 셋 다 "전체"(빈 값)면 실수로 전체 데이터가 삭제되는 사고를 막기
+     위해 아무것도 지우지 않고 안내만 한다. 하나 이상만 선택해도 됨
+     (예: 년도만 선택 → 그 해 전체, 년도+월만 선택 → 그 달 전체).
+   - 개별 삭제(data-del)와 동일하게, 실수 방지를 위해 "삭제"라는
+     글자를 정확히 입력해야만 실제로 지워지도록 한다.
+============================================================ */
+async function deleteFilteredRecords(){
+  const fyRaw = document.getElementById('record-filter-year').value;
+  const fmRaw = document.getElementById('record-filter-month').value;
+  const fpRaw = document.getElementById('record-filter-product').value;
+  const fYear = fyRaw ? parseInt(fyRaw, 10) : null;
+  const fMonth = fmRaw ? parseInt(fmRaw, 10) : null;
+  const fProduct = fpRaw || null;
+
+  if(!fYear && !fMonth && !fProduct){
+    toast('삭제할 범위를 정하려면 년도·월·품목 중 하나 이상을 먼저 선택해주세요.', true);
+    return;
+  }
+
+  const latestIndex = await fetchLatestSheetIndex();
+  const targets = latestIndex.filter(s =>
+    (fYear===null || s.year===fYear) &&
+    (fMonth===null || s.month===fMonth) &&
+    (fProduct===null || s.product===fProduct)
+  );
+  if(targets.length === 0){
+    toast('선택한 조건에 해당하는 기록이 없습니다.', true);
+    return;
+  }
+
+  const labelParts = [];
+  if(fYear) labelParts.push(`${fYear}년`);
+  if(fMonth) labelParts.push(`${fMonth}월`);
+  if(fProduct) labelParts.push(fProduct);
+  const label = labelParts.join(' · ');
+
+  const typed = prompt(`"${label}" 조건의 기록 ${targets.length}건을 삭제합니다. 되돌릴 수 없습니다.\n\n계속하려면 아래에 "삭제"라고 입력하세요.`);
+  if(typed === null) return; // 취소
+  if(typed.trim() !== '삭제'){
+    toast('입력한 내용이 "삭제"와 일치하지 않아 취소되었습니다.', true);
+    return;
+  }
+
+  const ids = targets.map(s=>s.id);
+  for(const id of ids){ await deleteSheetById(id); }
+  await updateSheetIndex(null, ids);
+  if(ids.includes(currentSheetId)){
+    await resetActiveSheetView();
+  }
+  refreshRecordList();
+  toast(`"${label}" 기록 ${ids.length}건이 삭제되었습니다.`);
+}
+
+document.getElementById('record-filter-delete-btn').addEventListener('click', async ()=>{
+  if(isReadOnly){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
+  const btn = document.getElementById('record-filter-delete-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '삭제 중...';
+  try{
+    await deleteFilteredRecords();
+  }catch(e){
+    console.error(e);
+    toast('기록 삭제 중 오류가 발생했습니다. 다시 시도해주세요.', true);
   }finally{
     btn.disabled = false;
     btn.textContent = originalText;
