@@ -602,6 +602,61 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .toast.error{background:var(--red);}
 
+
+  /* ---------- 생산일정 캘린더 (기기가동 연동) ---------- */
+  .pc-settings{border:1px solid var(--line-soft);background:var(--off-white);border-radius:6px;padding:14px;margin-bottom:14px;}
+  .pc-settings .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .pc-settings .row .tb-field{flex:1;min-width:220px;}
+  .pc-settings input{padding:9px 10px;border:1px solid var(--line);border-radius:5px;font-size:13px;width:100%;}
+  .pc-help{font-size:12px;color:var(--ink-soft);line-height:1.65;margin-top:6px;}
+  .pc-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .pc-title{font-size:17px;font-weight:700;min-width:120px;text-align:center;}
+  .pc-nav{border:1px solid var(--line);background:#fff;border-radius:5px;padding:6px 12px;cursor:pointer;font-weight:700;}
+  .pc-nav:hover{background:var(--off-white);}
+  .pc-status{font-size:12px;color:var(--muted);margin-left:auto;}
+  .pc-legend{font-size:12px;color:var(--ink-soft);margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .pc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);}
+  .pc-wd{background:var(--off-white);text-align:center;font-size:12px;font-weight:700;padding:7px 0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .pc-wd.sun{color:var(--red);}
+  .pc-cell{min-height:64px;padding:4px 5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff;font-size:11.5px;}
+  .pc-cell.outside{background:#fafafb;color:var(--muted);}
+  .pc-cell.today{background:#f1f6ff;box-shadow:inset 0 0 0 2px var(--accent-1);}
+  .pc-dnum{font-weight:700;margin-bottom:3px;}
+  .pc-work{display:block;background:var(--chip-bg);color:var(--chip-ink);border-radius:3px;padding:1px 5px;margin-bottom:2px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pc-week{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 10px;background:#fbfbfd;border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .pc-week.future{opacity:.72;}
+  .pc-week-label{font-size:12px;font-weight:700;color:var(--ink);}
+  .pc-week-label small{font-weight:500;color:var(--ink-soft);margin-left:4px;}
+  .pc-dev{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;border-radius:5px;padding:3px 8px;font-size:12px;cursor:pointer;}
+  .pc-dev:hover{background:var(--off-white);}
+  .pc-dev .dn{font-weight:700;}
+  .pc-dev .dp{color:var(--ink-soft);}
+  .pc-dev .st{font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;}
+  .pc-dev .st.ok{background:var(--green-bg);color:var(--green);}
+  .pc-dev .st.no{background:var(--red-bg);color:var(--red);}
+  .pc-dev .st.nosheet{background:#eceef1;color:var(--ink-soft);}
+  .pc-sum{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;}
+  .pc-sum.ok{background:var(--green-bg);color:var(--green);}
+  .pc-sum.part{background:var(--amber-bg);color:var(--amber-ink);}
+  .pc-sum.no{background:var(--red-bg);color:var(--red);}
+  .pc-msg{padding:14px;border:1px dashed var(--line);border-radius:6px;color:var(--ink-soft);font-size:13px;line-height:1.7;background:var(--off-white);}
+  .pc-msg.err{border-color:#f3c9c9;background:var(--red-bg);color:var(--red);}
+
+  /* 저장된 기록 - 이번 주 작업 품목 강조 */
+  tr.wk-row td{background:#f1f6ff;}
+  .wk-tag{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;background:var(--accent-1);color:#fff;vertical-align:middle;}
+  #record-week-note{display:none;margin:0 0 10px;padding:9px 12px;border:1px solid #cfe0ff;background:#f1f6ff;border-radius:6px;font-size:12.5px;color:var(--ink);line-height:1.6;}
+  /* 칸 안에 기기가동 표시 */
+  .pc-cell{min-height:96px;}
+  .pc-blk{margin-bottom:7px;}
+  .pc-blk.future{opacity:.75;}
+  .pc-top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px;}
+  .pc-top .pc-work{margin-bottom:0;flex:1;min-width:0;}
+  .pc-cell .pc-dev{display:flex;width:100%;justify-content:space-between;align-items:center;gap:4px;margin-top:3px;padding:2px 5px;font-size:11px;}
+  .pc-cell .pc-dev .st{font-size:10.5px;padding:0 6px;white-space:nowrap;}
+  .pc-cell .pc-sum{font-size:10.5px;padding:1px 7px;white-space:nowrap;}
+  @media (max-width:880px){ .pc-cell{min-height:60px;font-size:10.5px;} }
+
   @media (max-width:880px){
     .app-wrap{padding:18px 12px 50px 12px;}
     .card{padding:18px 16px 24px 16px;}
@@ -709,6 +764,21 @@
           <input type="text" id="record-search-input" placeholder="기기명, 설치장소 검색">
           <button class="btn btn-danger" id="record-filter-delete-btn" style="margin-left:auto;">🗑️ 조회내역삭제</button>
         </div>
+        <div class="toolbar" style="margin-bottom:10px;">
+          <button type="button" class="btn btn-ghost" id="pc-settings-toggle">⚙ 구글 캘린더 연동 설정</button>
+          <button type="button" class="btn btn-ghost" id="pc-refresh-btn">🔄 이번 주 새로고침</button>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;"><input type="checkbox" id="pc-only-week"> 이번 주 작업만 보기</label>
+          <div class="tb-spacer"></div>
+        </div>
+        <div class="pc-settings" id="pc-settings" style="display:none;">
+          <div class="row">
+            <div class="tb-field"><label>구글 캘린더 ID</label><input type="text" id="pc-cal-id" placeholder="예: abcdef123456@group.calendar.google.com"></div>
+            <div class="tb-field"><label>API 키</label><input type="text" id="pc-api-key" placeholder="Google Cloud에서 발급받은 API 키"></div>
+          </div>
+          <button type="button" class="btn btn-primary" id="pc-save-config-btn">설정 저장</button>
+          <div class="pc-help">※ 톤백 관리대장에서 쓰는 것과 같은 캘린더 ID / API 키를 입력하세요(캘린더는 "공개"로 설정). 저장하면 모든 사용자에게 공유됩니다. 일정 제목에 품목 코드와 정제/여과/건조가 들어간 일정만 반영합니다.</div>
+        </div>
+        <div id="record-week-note"></div>
         <div class="list-count">저장된 기록 <span id="record-total-count"></span></div>
         <div class="table-scroll">
           <table class="plain">
@@ -722,6 +792,7 @@
           </table>
         </div>
       </div>
+
 
       <!-- ---------- 월별 엑셀 내보내기 ---------- -->
       <div class="tab-panel" id="panel-export">
@@ -1932,7 +2003,7 @@ async function renderRecordList(filter){
   const fYear = fyRaw ? parseInt(fyRaw,10) : null;
   const fMonth = fmRaw ? parseInt(fmRaw,10) : null;
 
-  const items = sheetIndex
+  let items = sheetIndex
     .filter(s => !filter || (s.device||'').toLowerCase().includes(filter) || (s.location||'').toLowerCase().includes(filter))
     .filter(s => fYear===null || s.year===fYear)
     .filter(s => fMonth===null || s.month===fMonth)
@@ -1953,7 +2024,16 @@ async function renderRecordList(filter){
       return (b.updatedAt||'').localeCompare(a.updatedAt||'');
     });
 
-  const filterActive = !!filter || fYear!==null || fMonth!==null || !!fpRaw;
+  // 이번 주에 작업이 있는 품목의 기록(이번 주가 걸친 연월 것)을 맨 위로 올린다.
+  const wkThis = items.filter(s => pcWeekTag(s)==='이번 주');
+  const wkNext = [];
+  const onlyWeekBox = document.getElementById('pc-only-week');
+  const onlyWeek = !!(onlyWeekBox && onlyWeekBox.checked) && (wkThis.length || wkNext.length);
+  if(onlyWeek){ items = wkThis.concat(wkNext); }
+  else if(wkThis.length || wkNext.length){ items = wkThis.concat(wkNext, items.filter(s => !pcWeekTag(s))); }
+  pcUpdateWeekNote();
+
+  const filterActive = onlyWeek || !!filter || fYear!==null || fMonth!==null || !!fpRaw;
   if(countEl){
     countEl.textContent = filterActive
       ? `(조회결과 ${items.length}건 / 전체 ${sheetIndex.length}건)`
@@ -1971,9 +2051,9 @@ async function renderRecordList(filter){
   tbody.innerHTML = items.map((s,i)=>{
     const status = recordStatusInfo(s);
     return `
-      <tr data-id="${s.id}">
+      <tr data-id="${s.id}"${pcWeekTag(s) ? ' class="wk-row"' : ''}>
         <td>${i+1}</td>
-        <td>${escapeHtml(s.product)||'-'}</td>
+        <td>${escapeHtml(s.product)||'-'}${pcWeekTag(s) ? `<span class="wk-tag">${pcWeekTag(s)}</span>` : ''}</td>
         <td>${escapeHtml(s.device)||'(기기명 미입력)'}</td>
         <td>${escapeHtml(s.location)||'-'}</td>
         <td>${s.year}-${String(s.month).padStart(2,'0')}</td>
@@ -2045,7 +2125,7 @@ document.getElementById('record-filter-product').addEventListener('change', ()=>
 function switchTab(name){
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.tab-panel').forEach(p=> p.classList.toggle('active', p.id === 'panel-'+name));
-  if(name==='list') refreshRecordList();
+  if(name==='list'){ refreshRecordList(); if(typeof pcEnsureThisWeek==='function') pcEnsureThisWeek(); }
   if(name==='accounts') renderAccountsPanel();
 }
 document.querySelectorAll('.tab').forEach(t=>{
@@ -3647,6 +3727,246 @@ document.getElementById('prev-month-save-btn').addEventListener('click', async (
   }finally{
     btn.disabled = false;
     btn.textContent = originalText;
+  }
+});
+
+
+/* ============================================================
+   구글 캘린더 연동 공통 로직 ("저장된 기록" 탭의 이번 주 작업 표시에 사용)
+   - 톤백 관리대장과 같은 방식: 공개 캘린더를 API 키로 읽는다(OAuth 불필요).
+   - 일정 제목에 품목 코드와 정제/여과/건조가 들어 있으면 그 품목의 작업으로 본다.
+   - 작성 판단: 해당 기기의 기록서에서 그 주(일~토) 날짜와 겹치는 날짜 행이 있으면 "작성".
+============================================================ */
+const PC_CONFIG_KEY = 'prod-calendar-config';
+// 일정 제목에 아래 공정 단어가 들어간 일정만 캘린더에 표시한다(그 외 일정은 무시).
+// 비워두면([]) 품목 코드가 들어간 모든 일정을 표시한다.
+const PC_PROCESS_KEYWORDS = ['정제','여과','건조'];
+// 위 단어가 들어 있어도 아래 단어가 있으면 제외한다. 예) "G0720 건조기 청소"
+const PC_EXCLUDE_KEYWORDS = ['청소'];
+// 공정 단어 바로 뒤에 "기"가 붙으면(건조기/여과기/정제기) 공정이 아니라 설비 이름이므로 제외한다.
+function pcIsProcessTitle(title){
+  const t = String(title||'');
+  if(PC_EXCLUDE_KEYWORDS.some(k=>t.indexOf(k)!==-1)) return false;
+  if(!PC_PROCESS_KEYWORDS.length) return true;
+  return PC_PROCESS_KEYWORDS.some(k=> new RegExp(k+'(?!기)').test(t));
+}
+
+let pcConfig = { calendarId:'', apiKey:'' };
+let pcSheetCache = new Map(); // sheetId -> data|null
+
+function pcDateOnly(x){ const d = new Date(x); d.setHours(0,0,0,0); return d; }
+function pcYmd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function pcLabel(d){ return `${d.getMonth()+1}/${d.getDate()}`; }
+
+// 일정 제목 → 대표 품목명(BASE_PRODUCTS 중 하나). 가장 긴 코드 우선.
+function pcBaseProductOfTitle(title){
+  const up = String(title||'').toUpperCase();
+  let best = null, bestLen = 0;
+  BASE_PRODUCTS.forEach(base=>{
+    const codes = [base].concat(BASE_TO_CODES[base] || []);
+    codes.forEach(c=>{
+      if(up.indexOf(c.toUpperCase()) !== -1 && c.length > bestLen){ best = base; bestLen = c.length; }
+    });
+  });
+  return best;
+}
+
+function pcEventRange(ev){
+  if(ev.start && ev.start.date && ev.end && ev.end.date){
+    return { start:new Date(ev.start.date+'T00:00:00'), end:new Date(ev.end.date+'T00:00:00') };
+  }
+  if(ev.start && ev.start.dateTime){
+    const s = pcDateOnly(ev.start.dateTime); const e = new Date(s); e.setDate(e.getDate()+1);
+    return { start:s, end:e };
+  }
+  return null;
+}
+
+// 날짜(yyyy-mm-dd) → [대표 품목명...] (그 날 작업이 있는 품목)
+// 기록서의 date 문자열("2026.10.06", "2026.10.06~08", "2026.1006~1008" 등)을 {start,end}로 변환
+function pcParseRowDate(str){
+  const raw = String(str||'').trim();
+  if(!raw) return null;
+  const parts = raw.split('~').map(x=>x.replace(/[^\d]/g,''));
+  const f = parts[0];
+  let y, m, d;
+  if(f.length >= 8){ y=+f.slice(0,4); m=+f.slice(4,6); d=+f.slice(6,8); }
+  else if(f.length === 6){ y=2000+(+f.slice(0,2)); m=+f.slice(2,4); d=+f.slice(4,6); }
+  else return null;
+  const start = new Date(y, m-1, d); start.setHours(0,0,0,0);
+  let end = new Date(start);
+  const last = parts.length>1 ? parts[parts.length-1] : '';
+  if(last.length >= 4){
+    end = new Date(y, (+last.slice(0,2))-1, +last.slice(2,4));
+    if(end < start) end = new Date(y+1, end.getMonth(), end.getDate());
+  } else if(last.length >= 1 && last.length <= 2){
+    end = new Date(y, m-1, +last);
+  }
+  end.setHours(0,0,0,0);
+  return { start, end };
+}
+
+function pcSheetMeta(year, month, device){
+  return sheetIndex.find(s => s.year===year && s.month===month && s.device===device) || null;
+}
+
+async function pcLoadSheet(id){
+  if(pcSheetCache.has(id)) return pcSheetCache.get(id);
+  let data = null;
+  try{ data = await loadSheetById(id); }catch(e){ data = null; }
+  pcSheetCache.set(id, data);
+  return data;
+}
+
+// device 기록서에 weekStart~weekEnd(포함)와 겹치는 날짜 행이 있는지.
+// 반환: 'ok' | 'no' | 'nosheet'
+async function pcDeviceStatus(device, weekStart, weekEnd){
+  // 주가 두 달에 걸칠 수 있으므로 걸친 달의 기록서를 모두 확인
+  const months = new Map();
+  for(let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate()+1)){
+    months.set(`${d.getFullYear()}-${d.getMonth()+1}`, [d.getFullYear(), d.getMonth()+1]);
+  }
+  let anySheet = false;
+  for(const [y, m] of months.values()){
+    const meta = pcSheetMeta(y, m, device);
+    if(!meta) continue;
+    anySheet = true;
+    const data = await pcLoadSheet(meta.id);
+    const rows = data && Array.isArray(data.rows) ? data.rows : [];
+    const hit = rows.some(r=>{
+      const rg = pcParseRowDate(r && r.date);
+      return rg && rg.start <= weekEnd && rg.end >= weekStart;
+    });
+    if(hit) return 'ok';
+  }
+  return anySheet ? 'no' : 'nosheet';
+}
+
+async function pcLoadConfig(){
+  try{
+    const r = await stGet(PC_CONFIG_KEY, true);
+    const o = r ? JSON.parse(r.value) : null;
+    pcConfig = { calendarId:(o && o.calendarId || '').trim(), apiKey:(o && o.apiKey || '').trim() };
+  }catch(e){ pcConfig = { calendarId:'', apiKey:'' }; }
+  const a = document.getElementById('pc-cal-id'), b = document.getElementById('pc-api-key');
+  if(a) a.value = pcConfig.calendarId; if(b) b.value = pcConfig.apiKey;
+}
+
+/* ============================================================
+   이번 주 작업 품목 자동 표시 ("저장된 기록" 탭)
+   - 구글 캘린더에서 이번 주(일~토)의 정제/여과/건조 일정을 읽는다.
+   - 그 주에 그 품목 작업이 있고 기록서에 그 주 날짜 행이 아직 없으면(미작성)
+     그 기록을 맨 위로 올린다. 작성하면 목록에서 빠진다. 다음 주는 표시하지 않는다.
+   - 캘린더 ID/API 키가 없거나 불러오기에 실패하면 아무것도 하지 않는다.
+   - 탭을 열 때마다 작성 여부를 다시 확인한다(일정 읽기는 5분 캐시).
+============================================================ */
+let pcWeekInfo = null;   // { weeks:[{start,end,products,months}], loadedAt }
+let pcActiveMap = new Map(); // sheetId -> { tag:'이번 주', ws, we }
+let pcWeekBusy = false;
+
+function pcWeekTag(s){ const a = pcActiveMap.get(s.id); return a ? a.tag : ''; }
+
+function pcUpdateWeekNote(){
+  const el = document.getElementById('record-week-note'); if(!el) return;
+  if(pcActiveMap.size===0){ el.style.display='none'; return; }
+  const parts = [];
+  ['이번 주'].forEach(tag=>{
+    const prods = new Set();
+    let range = null;
+    pcActiveMap.forEach((a, id)=>{
+      if(a.tag!==tag) return;
+      const m = sheetIndex.find(x=>x.id===id); if(m) prods.add(m.product);
+      range = a;
+    });
+    if(prods.size){
+      const list = BASE_PRODUCTS.filter(b=>prods.has(b));
+      parts.push(`${tag}(${pcLabel(range.ws)}~${pcLabel(range.we)}) <b>${list.map(escapeHtml).join(', ')}</b>`);
+    }
+  });
+  el.style.display='block';
+  el.innerHTML = `📅 작성할 기록 — ${parts.join(' · ')}. 작성하면 이 목록에서 빠집니다.`;
+}
+
+async function pcEnsureThisWeek(){
+  if(pcWeekBusy) return;
+  pcWeekBusy = true;
+  try{
+    await pcLoadConfig();
+    if(!pcConfig.calendarId || !pcConfig.apiKey) return;
+
+    if(!pcWeekInfo || Date.now() - pcWeekInfo.loadedAt >= 5*60*1000){
+      const today = pcDateOnly(new Date());
+      const ws0 = new Date(today); ws0.setDate(ws0.getDate()-ws0.getDay());
+      const weeks = [0].map(k=>{
+        const start = new Date(ws0); start.setDate(start.getDate()+7*k);
+        const end = new Date(start); end.setDate(end.getDate()+6);
+        return { start, end, products:new Set(), months:new Set() };
+      });
+      weeks.forEach(w=>{ for(let d=new Date(w.start); d<=w.end; d.setDate(d.getDate()+1)) w.months.add(`${d.getFullYear()}-${d.getMonth()+1}`); });
+      const endEx = new Date(weeks[0].end); endEx.setDate(endEx.getDate()+1);
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(pcConfig.calendarId)}/events`
+        + `?key=${encodeURIComponent(pcConfig.apiKey)}&singleEvents=true&orderBy=startTime&maxResults=2500`
+        + `&timeMin=${encodeURIComponent(weeks[0].start.toISOString())}&timeMax=${encodeURIComponent(endEx.toISOString())}`;
+      const res = await withTimeout(fetch(url), 10000);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      (Array.isArray(data.items) ? data.items : []).forEach(ev=>{
+        const title = ev.summary || '';
+        if(!pcIsProcessTitle(title)) return;
+        const base = pcBaseProductOfTitle(title);
+        if(!base) return;
+        const r = pcEventRange(ev); if(!r) return;
+        weeks.forEach(w=>{ if(r.start <= w.end && r.end > w.start) w.products.add(base); });
+      });
+      pcWeekInfo = { weeks, loadedAt: Date.now() };
+    }
+
+    pcSheetCache = new Map(); // 작성 여부는 매번 최신 기록서로 다시 확인
+    const next = new Map();
+    for(const sh of sheetIndex){
+      for(let k=0;k<pcWeekInfo.weeks.length;k++){
+        const w = pcWeekInfo.weeks[k];
+        if(!w.products.has(sh.product) || !w.months.has(`${sh.year}-${sh.month}`)) continue;
+        const st = await pcDeviceStatus(sh.device, w.start, w.end);
+        if(st === 'ok') continue; // 이번 주 분은 이미 작성됨 → 표시하지 않음
+        next.set(sh.id, { tag: '이번 주', ws: w.start, we: w.end });
+        break;
+      }
+    }
+    pcActiveMap = next;
+    refreshRecordList();
+  }catch(e){
+    console.error('이번 주 작업 품목 확인 실패', e);
+  }finally{
+    pcWeekBusy = false;
+  }
+}
+
+
+document.getElementById('pc-settings-toggle').addEventListener('click', ()=>{
+  const p = document.getElementById('pc-settings');
+  p.style.display = p.style.display==='none' ? 'block' : 'none';
+});
+document.getElementById('pc-refresh-btn').addEventListener('click', ()=>{
+  pcWeekInfo = null;
+  pcEnsureThisWeek();
+});
+document.getElementById('pc-only-week').addEventListener('change', ()=> refreshRecordList());
+document.getElementById('pc-save-config-btn').addEventListener('click', async ()=>{
+  if(isReadOnly){ toast('보기 전용 모드에서는 설정을 저장할 수 없습니다.', true); return; }
+  const cfg = {
+    calendarId: document.getElementById('pc-cal-id').value.trim(),
+    apiKey: document.getElementById('pc-api-key').value.trim()
+  };
+  try{
+    await stSet(PC_CONFIG_KEY, JSON.stringify(cfg), true);
+    pcConfig = cfg;
+    toast('캘린더 설정이 저장되었습니다.');
+    pcWeekInfo = null;
+    pcEnsureThisWeek();
+  }catch(e){
+    console.error(e);
+    toast('설정 저장 중 오류가 발생했습니다.', true);
   }
 });
 
