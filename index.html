@@ -394,9 +394,6 @@
     font-family:'Noto Sans KR',sans-serif;
   }
   .mfg-wrap select.mfg-select:focus, .mfg-wrap input.mfg-num:focus{background:var(--chip-bg);}
-  td.col-del{text-align:center;width:34px;}
-  td.col-del button{border:none;background:none;color:var(--muted);cursor:pointer;font-size:16px;}
-  td.col-del button:hover{color:var(--red);}
 
   .grid-actions{
     display:flex;
@@ -609,53 +606,11 @@
   .pc-settings .row .tb-field{flex:1;min-width:220px;}
   .pc-settings input{padding:9px 10px;border:1px solid var(--line);border-radius:5px;font-size:13px;width:100%;}
   .pc-help{font-size:12px;color:var(--ink-soft);line-height:1.65;margin-top:6px;}
-  .pc-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
-  .pc-title{font-size:17px;font-weight:700;min-width:120px;text-align:center;}
-  .pc-nav{border:1px solid var(--line);background:#fff;border-radius:5px;padding:6px 12px;cursor:pointer;font-weight:700;}
-  .pc-nav:hover{background:var(--off-white);}
-  .pc-status{font-size:12px;color:var(--muted);margin-left:auto;}
-  .pc-legend{font-size:12px;color:var(--ink-soft);margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-  .pc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);}
-  .pc-wd{background:var(--off-white);text-align:center;font-size:12px;font-weight:700;padding:7px 0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
-  .pc-wd.sun{color:var(--red);}
-  .pc-cell{min-height:64px;padding:4px 5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff;font-size:11.5px;}
-  .pc-cell.outside{background:#fafafb;color:var(--muted);}
-  .pc-cell.today{background:#f1f6ff;box-shadow:inset 0 0 0 2px var(--accent-1);}
-  .pc-dnum{font-weight:700;margin-bottom:3px;}
-  .pc-work{display:block;background:var(--chip-bg);color:var(--chip-ink);border-radius:3px;padding:1px 5px;margin-bottom:2px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .pc-week{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 10px;background:#fbfbfd;border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
-  .pc-week.future{opacity:.72;}
-  .pc-week-label{font-size:12px;font-weight:700;color:var(--ink);}
-  .pc-week-label small{font-weight:500;color:var(--ink-soft);margin-left:4px;}
-  .pc-dev{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;border-radius:5px;padding:3px 8px;font-size:12px;cursor:pointer;}
-  .pc-dev:hover{background:var(--off-white);}
-  .pc-dev .dn{font-weight:700;}
-  .pc-dev .dp{color:var(--ink-soft);}
-  .pc-dev .st{font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;}
-  .pc-dev .st.ok{background:var(--green-bg);color:var(--green);}
-  .pc-dev .st.no{background:var(--red-bg);color:var(--red);}
-  .pc-dev .st.nosheet{background:#eceef1;color:var(--ink-soft);}
-  .pc-sum{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;}
-  .pc-sum.ok{background:var(--green-bg);color:var(--green);}
-  .pc-sum.part{background:var(--amber-bg);color:var(--amber-ink);}
-  .pc-sum.no{background:var(--red-bg);color:var(--red);}
-  .pc-msg{padding:14px;border:1px dashed var(--line);border-radius:6px;color:var(--ink-soft);font-size:13px;line-height:1.7;background:var(--off-white);}
-  .pc-msg.err{border-color:#f3c9c9;background:var(--red-bg);color:var(--red);}
 
   /* 저장된 기록 - 이번 주 작업 품목 강조 */
   tr.wk-row td{background:#f1f6ff;}
   .wk-tag{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;background:var(--accent-1);color:#fff;vertical-align:middle;}
   #record-week-note{display:none;margin:0 0 10px;padding:9px 12px;border:1px solid #cfe0ff;background:#f1f6ff;border-radius:6px;font-size:12.5px;color:var(--ink);line-height:1.6;}
-  /* 칸 안에 기기가동 표시 */
-  .pc-cell{min-height:96px;}
-  .pc-blk{margin-bottom:7px;}
-  .pc-blk.future{opacity:.75;}
-  .pc-top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px;}
-  .pc-top .pc-work{margin-bottom:0;flex:1;min-width:0;}
-  .pc-cell .pc-dev{display:flex;width:100%;justify-content:space-between;align-items:center;gap:4px;margin-top:3px;padding:2px 5px;font-size:11px;}
-  .pc-cell .pc-dev .st{font-size:10.5px;padding:0 6px;white-space:nowrap;}
-  .pc-cell .pc-sum{font-size:10.5px;padding:1px 7px;white-space:nowrap;}
-  @media (max-width:880px){ .pc-cell{min-height:60px;font-size:10.5px;} }
 
   @media (max-width:880px){
     .app-wrap{padding:18px 12px 50px 12px;}
@@ -1161,11 +1116,42 @@ function deriveRawFromFormatted(formattedStr){
 }
 
 // 시간: 숫자만 입력해도 자동으로 콜론(:)을 넣어줌 (예: 0930 -> 09:30)
+// 시는 00~23, 분은 00~59까지만 입력되도록 한 글자씩 걸러낸다.
+//  - 첫 글자가 3~9면 한 자리 시각으로 보고 앞에 0을 붙인다 (9 -> 09)
+//  - 시 둘째 자리: 첫 글자가 2이면 0~3만 허용 (24 이상 입력 불가)
+//  - 분 첫째 자리: 0~5만 허용 (60 이상 입력 불가)
+//  - 숫자와 콜론 이외의 글자는 입력되지 않는다.
 function autoFormatTime(value){
-  if(/[^\d:]/.test(value)) return value;
-  const digits = value.replace(/:/g,'').slice(0,4);
-  if(digits.length <= 2) return digits;
-  return `${digits.slice(0,2)}:${digits.slice(2)}`;
+  const digits = String(value||'').replace(/[^\d]/g,'');
+  let out = '';
+  for(const ch of digits){
+    if(out.length >= 4) break;
+    const pos = out.length;
+    if(pos === 0){
+      out = (ch > '2') ? ('0' + ch) : ch;
+    } else if(pos === 1){
+      if(out[0] === '2' && ch > '3') continue;
+      out += ch;
+    } else if(pos === 2){
+      if(ch > '5') continue;
+      out += ch;
+    } else {
+      out += ch;
+    }
+  }
+  if(out.length <= 2) return out;
+  return `${out.slice(0,2)}:${out.slice(2)}`;
+}
+// 입력을 마치고 칸을 벗어날 때 모자란 자리를 0으로 채운다 (18 -> 18:00, 18:3 -> 18:30)
+function completeTime(value){
+  const v = String(value||'');
+  if(!v || /[^\d:]/.test(v)) return v; // 예전 데이터에 숫자가 아닌 글자가 있으면 건드리지 않음
+  const d = v.replace(/[^\d]/g,'');
+  if(d.length === 0) return '';
+  if(d.length === 1) return `0${d}:00`;
+  if(d.length === 2) return `${d}:00`;
+  if(d.length === 3) return `${d.slice(0,2)}:${d[2]}0`;
+  return `${d.slice(0,2)}:${d.slice(2,4)}`;
 }
 
 function sanitize(str){
@@ -1232,8 +1218,6 @@ const FIREBASE_CONFIG = {
 
 const LS_PREFIX = 'eqlog__';
 let storageModeNotified = false;
-let useServerApi = false;
-let serverShareUrls = [];
 let useFirebase = false;
 let firebaseDb = null;
 let firebaseLastError = null; // 마지막 Firebase 연결 실패 원인 (진단용 — 아래 firebaseErrorExplain 참고)
@@ -1337,18 +1321,7 @@ function storageModeLabel(){
 //   저장소가 생겨 계정/기록이 서로 공유되지 않는 문제가 있었다. 이제는 항상
 //   Firebase를 우선 사용해 누가 어떤 PC로 접속하든 같은 데이터를 보도록 한다.
 async function initStorageBackend(){
-  useServerApi = false;
-  serverShareUrls = [];
   useFirebase = await initFirebaseBackend();
-}
-
-async function apiJson(path, opts={}){
-  const r = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-    ...opts,
-  });
-  if(!r.ok) throw new Error('API ' + r.status);
-  return r.json();
 }
 
 function notifyStorageMode(){
@@ -1436,13 +1409,6 @@ async function retryFirebaseConnection(){
 
 async function stGet(key, shared){
   notifyStorageMode();
-  if(useServerApi){
-    try{
-      const data = await apiJson('/api/kv/' + encodeURIComponent(key));
-      if(data.value === null || data.value === undefined) return null;
-      return { key, value: data.value, shared: !!shared };
-    }catch(e){ return null; }
-  }
   if(useFirebase && firebaseDb){
     try{
       const snap = await firebaseDb.collection('kv').doc(key).get();
@@ -1463,15 +1429,6 @@ async function stGet(key, shared){
 }
 async function stSet(key, value, shared){
   notifyStorageMode();
-  if(useServerApi){
-    try{
-      await apiJson('/api/kv/' + encodeURIComponent(key), {
-        method: 'PUT',
-        body: JSON.stringify({ value }),
-      });
-      return { key, value, shared: !!shared };
-    }catch(e){ return null; }
-  }
   if(useFirebase && firebaseDb){
     try{
       await firebaseDb.collection('kv').doc(key).set({ value, updatedAt: Date.now() });
@@ -1489,12 +1446,6 @@ async function stSet(key, value, shared){
 }
 async function stDelete(key, shared){
   notifyStorageMode();
-  if(useServerApi){
-    try{
-      await apiJson('/api/kv/' + encodeURIComponent(key), { method: 'DELETE' });
-      return { key, deleted: true, shared: !!shared };
-    }catch(e){ return null; }
-  }
   if(useFirebase && firebaseDb){
     try{
       await firebaseDb.collection('kv').doc(key).delete();
@@ -2026,11 +1977,10 @@ async function renderRecordList(filter){
 
   // 이번 주에 작업이 있는 품목의 기록(이번 주가 걸친 연월 것)을 맨 위로 올린다.
   const wkThis = items.filter(s => pcWeekTag(s)==='이번 주');
-  const wkNext = [];
   const onlyWeekBox = document.getElementById('pc-only-week');
-  const onlyWeek = !!(onlyWeekBox && onlyWeekBox.checked) && (wkThis.length || wkNext.length);
-  if(onlyWeek){ items = wkThis.concat(wkNext); }
-  else if(wkThis.length || wkNext.length){ items = wkThis.concat(wkNext, items.filter(s => !pcWeekTag(s))); }
+  const onlyWeek = !!(onlyWeekBox && onlyWeekBox.checked) && wkThis.length > 0;
+  if(onlyWeek){ items = wkThis; }
+  else if(wkThis.length){ items = wkThis.concat(items.filter(s => !pcWeekTag(s))); }
   pcUpdateWeekNote();
 
   const filterActive = onlyWeek || !!filter || fYear!==null || fMonth!==null || !!fpRaw;
@@ -2053,7 +2003,7 @@ async function renderRecordList(filter){
     return `
       <tr data-id="${s.id}"${pcWeekTag(s) ? ' class="wk-row"' : ''}>
         <td>${i+1}</td>
-        <td>${escapeHtml(s.product)||'-'}${pcWeekTag(s) ? `<span class="wk-tag">${pcWeekTag(s)}</span>` : ''}</td>
+        <td>${escapeHtml(s.product)||'-'}${pcWeekTag(s) ? `<span class="wk-tag">${pcWeekTag(s)}${pcWeekStage(s) ? ' · ' + escapeHtml(pcWeekStage(s)) : ''}</span>` : ''}</td>
         <td>${escapeHtml(s.device)||'(기기명 미입력)'}</td>
         <td>${escapeHtml(s.location)||'-'}</td>
         <td>${s.year}-${String(s.month).padStart(2,'0')}</td>
@@ -2451,8 +2401,7 @@ function ledgerPageHtml(s, pIdx, totalPages){
               <th style="width:13%">작업공정</th>
               <th style="width:11%">작업자</th>
               <th style="width:11%">확인자</th>
-              <th style="width:24%">비고</th>
-              <th style="width:4%"></th>
+              <th style="width:28%">비고</th>
             </tr>
           </thead>
           <tbody class="grid-tbody" data-page="${pIdx}"></tbody>
@@ -2752,11 +2701,18 @@ function createRowEl(rowObj){
   startInput.value = rowObj.timeStart || '';
   startInput.placeholder = '';
   startInput.readOnly = isEditBlocked();
+  startInput.inputMode = 'numeric';
+  startInput.maxLength = 5;
+  startInput.autocomplete = 'off';
   startInput.addEventListener('input', ()=>{
     const formatted = autoFormatTime(startInput.value);
     if(formatted !== startInput.value) startInput.value = formatted;
     rowObj.timeStart = startInput.value;
     setDirty(true);
+  });
+  startInput.addEventListener('blur', ()=>{
+    const c = completeTime(startInput.value);
+    if(c !== startInput.value){ startInput.value = c; rowObj.timeStart = c; setDirty(true); }
   });
   startTd.appendChild(startInput);
   tr.appendChild(startTd);
@@ -2768,11 +2724,18 @@ function createRowEl(rowObj){
   endInput.value = rowObj.timeEnd || '';
   endInput.placeholder = '';
   endInput.readOnly = isEditBlocked();
+  endInput.inputMode = 'numeric';
+  endInput.maxLength = 5;
+  endInput.autocomplete = 'off';
   endInput.addEventListener('input', ()=>{
     const formatted = autoFormatTime(endInput.value);
     if(formatted !== endInput.value) endInput.value = formatted;
     rowObj.timeEnd = endInput.value;
     setDirty(true);
+  });
+  endInput.addEventListener('blur', ()=>{
+    const c = completeTime(endInput.value);
+    if(c !== endInput.value){ endInput.value = c; rowObj.timeEnd = c; setDirty(true); }
   });
   endTd.appendChild(endInput);
   tr.appendChild(endTd);
@@ -2918,22 +2881,6 @@ function createRowEl(rowObj){
     tr.appendChild(td);
   }
 
-  const delTd = document.createElement('td');
-  delTd.className='col-del';
-  const delBtn = document.createElement('button');
-  delBtn.textContent='✕';
-  delBtn.title='행 삭제';
-  if(isEditBlocked()) delBtn.disabled = true;
-  delBtn.addEventListener('click', ()=>{
-    if(isEditBlocked()){ toast('보기 전용 모드에서는 삭제할 수 없습니다.', true); return; }
-    if(!confirm('이 행을 삭제하시겠습니까?')) return;
-    const idx = currentSheet.rows.indexOf(rowObj);
-    if(idx>-1) currentSheet.rows.splice(idx,1);
-    setDirty(true);
-    renderLedger();
-  });
-  delTd.appendChild(delBtn);
-  tr.appendChild(delTd);
   return tr;
 }
 
@@ -3132,7 +3079,7 @@ function buildSheetXml(sheet){
   // 서명(담당자/승인자)과 비고 내용은 마지막 페이지에만 채우고, 그 외 페이지는
   // 원본처럼 빈 칸으로 남겨둔다(사선 처리는 buildDiagonalShapes에서).
   pages.forEach(page=>{
-    const { titleRow, yearMonthRow, deviceLocRow, colHeaderRow, dataStartRow, dataEndRow,
+    const { titleRow, yearMonthRow, deviceLocRow, colHeaderRow, dataStartRow,
             footerLabelRow, footerEndRow, infoRow, rows, isLastPage, pageIndex } = page;
 
     // 제목
@@ -3751,13 +3698,69 @@ function pcIsProcessTitle(title){
   return PC_PROCESS_KEYWORDS.some(k=> new RegExp(k+'(?!기)').test(t));
 }
 
+// 1차 정제 / 2차 정제처럼 한 주에 같은 공정을 여러 번 하는 품목.
+// 이 품목은 "그 주에 작성했는가"가 아니라 "일정 한 건 한 건(차수별)"의 날짜를 기록서와 맞춰본다.
+// (GP-A079 는 O0711 과 같은 품목이라 O0711 에 포함된다)
+const PC_STAGED_PRODUCTS = ['LX0566','G0720','O0711'];
+// 일정 제목에서 차수(1차/2차) 읽기: "1차 정제", "1차정제", "정제 2차" 모두 인식
+function pcStageOfTitle(title){
+  const m = /([1-9])\s*차/.exec(String(title||''));
+  return m ? +m[1] : null;
+}
+// 일정 제목 → 공정(정제/여과/건조)
+function pcProcessOfTitle(title){
+  const t = String(title||'');
+  return PC_PROCESS_KEYWORDS.find(k=> new RegExp(k+'(?!기)').test(t)) || '';
+}
+// 제목이 GP-A079(GP) 품목인지. GP-A079 는 O0711 과 같은 기기를 쓰지만 1차/2차 정제 모두 건조기까지 쓴다.
+function pcIsGpTitle(title){
+  const up = String(title||'').toUpperCase();
+  return up.indexOf('GP-A079') !== -1 || pcAliasInTitle(up, 'GP');
+}
+// 일정이 해당 기기를 쓰는지. (기기 종류: 0=반응기 RS/RG, 1=여과기 NF, 2=건조기 VD)
+//  - O0711 / LX0566 / G0720
+//      1차 정제 : 반응기 + 여과기
+//      2차 정제 : 반응기 + 여과기 + 건조기
+//  - GP-A079 (1차, 2차 모두) : 반응기 + 여과기 + 건조기
+//  - 차수를 알 수 없는 정제 일정 : 셋 다
+//  - "여과" / "건조"만 적힌 일정 : 각각 여과기 / 건조기만
+function pcStageUsesDevice(ev, device){
+  const t = deviceTypeRank(device);
+  if(ev.process === '여과') return t === 1;
+  if(ev.process === '건조') return t === 2;
+  if(t === 0 || t === 1) return true;
+  if(t === 2) return ev.gp ? true : ev.stage !== 1;
+  return false;
+}
+function pcLastDay(ev){ const d = new Date(ev.end); d.setDate(d.getDate()-1); return d; }
+function pcEventTouchesMonth(ev, year, month){
+  const ms = new Date(year, month-1, 1), me = new Date(year, month, 1);
+  return ev.start < me && ev.end > ms;
+}
+function pcStageText(ev){
+  const last = new Date(ev.end); last.setDate(last.getDate()-1);
+  const days = (last > ev.start) ? `${pcLabel(ev.start)}~${pcLabel(last)}` : pcLabel(ev.start);
+  return `${ev.gp ? 'GP-A079 ' : ''}${ev.stage ? ev.stage+'차 ' : ''}${ev.process || ''} ${days}`.replace(/\s+/g,' ').trim();
+}
+
 let pcConfig = { calendarId:'', apiKey:'' };
 let pcSheetCache = new Map(); // sheetId -> data|null
 
 function pcDateOnly(x){ const d = new Date(x); d.setHours(0,0,0,0); return d; }
-function pcYmd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function pcLabel(d){ return `${d.getMonth()+1}/${d.getDate()}`; }
 
+// 캘린더 일정 제목에 "GP 정제"처럼 전체 코드(GP-A079RE) 대신 약칭만 적는 경우를 위한 별칭.
+// 별칭은 앞뒤가 영문/숫자가 아닐 때만 인식한다. (예: "GP 정제", "GP정제", "GP-A079 정제" 인식 / "AGPB" 는 무시)
+const PC_TITLE_ALIASES = {
+  'O0711': ['GP-A079','GP'],
+  'O0830': ['HTM-K940','HTM'],
+  'O0731': ['LHT-6634','LHT'],
+  'O0330': ['C383']
+};
+function pcAliasInTitle(upTitle, alias){
+  const a = alias.toUpperCase().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  return new RegExp('(^|[^A-Z0-9])' + a + '(?![A-Z0-9])').test(upTitle);
+}
 // 일정 제목 → 대표 품목명(BASE_PRODUCTS 중 하나). 가장 긴 코드 우선.
 function pcBaseProductOfTitle(title){
   const up = String(title||'').toUpperCase();
@@ -3766,6 +3769,9 @@ function pcBaseProductOfTitle(title){
     const codes = [base].concat(BASE_TO_CODES[base] || []);
     codes.forEach(c=>{
       if(up.indexOf(c.toUpperCase()) !== -1 && c.length > bestLen){ best = base; bestLen = c.length; }
+    });
+    (PC_TITLE_ALIASES[base] || []).forEach(a=>{
+      if(a.length > bestLen && pcAliasInTitle(up, a)){ best = base; bestLen = a.length; }
     });
   });
   return best;
@@ -3865,6 +3871,7 @@ let pcActiveMap = new Map(); // sheetId -> { tag:'이번 주', ws, we }
 let pcWeekBusy = false;
 
 function pcWeekTag(s){ const a = pcActiveMap.get(s.id); return a ? a.tag : ''; }
+function pcWeekStage(s){ const a = pcActiveMap.get(s.id); return a && a.stage ? a.stage : ''; }
 
 function pcUpdateWeekNote(){
   const el = document.getElementById('record-week-note'); if(!el) return;
@@ -3872,15 +3879,18 @@ function pcUpdateWeekNote(){
   const parts = [];
   ['이번 주'].forEach(tag=>{
     const prods = new Set();
+    const stageBy = new Map();
     let range = null;
     pcActiveMap.forEach((a, id)=>{
       if(a.tag!==tag) return;
       const m = sheetIndex.find(x=>x.id===id); if(m) prods.add(m.product);
+      if(m && a.stage){ const st = stageBy.get(m.product) || new Set(); st.add(a.stage); stageBy.set(m.product, st); }
       range = a;
     });
     if(prods.size){
       const list = BASE_PRODUCTS.filter(b=>prods.has(b));
-      parts.push(`${tag}(${pcLabel(range.ws)}~${pcLabel(range.we)}) <b>${list.map(escapeHtml).join(', ')}</b>`);
+      const label = b => escapeHtml(b) + (stageBy.has(b) ? ` <span style=\"font-weight:500\">(${[...stageBy.get(b)].map(escapeHtml).join(' / ')})</span>` : '');
+      parts.push(`${tag}(${pcLabel(range.ws)}~${pcLabel(range.we)}) <b>${list.map(label).join(', ')}</b>`);
     }
   });
   el.style.display='block';
@@ -3900,7 +3910,7 @@ async function pcEnsureThisWeek(){
       const weeks = [0].map(k=>{
         const start = new Date(ws0); start.setDate(start.getDate()+7*k);
         const end = new Date(start); end.setDate(end.getDate()+6);
-        return { start, end, products:new Set(), months:new Set() };
+        return { start, end, products:new Set(), months:new Set(), stageEvents:[] };
       });
       weeks.forEach(w=>{ for(let d=new Date(w.start); d<=w.end; d.setDate(d.getDate()+1)) w.months.add(`${d.getFullYear()}-${d.getMonth()+1}`); });
       const endEx = new Date(weeks[0].end); endEx.setDate(endEx.getDate()+1);
@@ -3914,8 +3924,14 @@ async function pcEnsureThisWeek(){
         const title = ev.summary || '';
         if(!pcIsProcessTitle(title)) return;
         const base = pcBaseProductOfTitle(title);
-        if(!base) return;
+        if(!base){ console.warn('[캘린더] 품목 코드를 찾지 못해 건너뜀:', title); return; }
         const r = pcEventRange(ev); if(!r) return;
+        if(PC_STAGED_PRODUCTS.indexOf(base) !== -1){
+          // 1차/2차 정제가 있는 품목: 일정 한 건씩 따로 보관
+          const evInfo = { base, process: pcProcessOfTitle(title), stage: pcStageOfTitle(title), gp: pcIsGpTitle(title), start: r.start, end: r.end };
+          weeks.forEach(w=>{ if(r.start <= w.end && r.end > w.start) w.stageEvents.push(evInfo); });
+          return;
+        }
         weeks.forEach(w=>{ if(r.start <= w.end && r.end > w.start) w.products.add(base); });
       });
       pcWeekInfo = { weeks, loadedAt: Date.now() };
@@ -3926,6 +3942,29 @@ async function pcEnsureThisWeek(){
     for(const sh of sheetIndex){
       for(let k=0;k<pcWeekInfo.weeks.length;k++){
         const w = pcWeekInfo.weeks[k];
+        if(PC_STAGED_PRODUCTS.indexOf(sh.product) !== -1){
+          // 차수별(1차→2차) 순서대로: 이 기기를 쓰는 일정 중 기록서에 아직 날짜가 없는 가장 빠른 1건만 표시.
+          //  정제 일정의 "작성 확인 구간" = 그 일정 시작일 ~ 다음 정제 일정 시작 전날(마지막 일정은 이번 주 끝까지).
+          //  (여과기/건조기는 정제 다음 날 쓰는 경우가 있어 일정 날짜에 딱 맞지 않아도 구간 안이면 작성으로 본다)
+          const prodEvs = w.stageEvents.filter(e => e.base===sh.product);
+          const jeongje = prodEvs.filter(e => e.process==='정제').sort((a,b)=> a.start - b.start);
+          const windowEnd = (e)=>{
+            const nxt = jeongje.find(x => x.start > e.start);
+            if(nxt){ const d = new Date(nxt.start); d.setDate(d.getDate()-1); return d; }
+            const l = pcLastDay(e); return l > w.end ? l : new Date(w.end);
+          };
+          const mine = prodEvs
+            .filter(e => pcEventTouchesMonth(e, sh.year, sh.month) && pcStageUsesDevice(e, sh.device))
+            .sort((a,b)=> (a.start - b.start) || ((a.stage||0) - (b.stage||0)));
+          let pend = null;
+          for(const e of mine){
+            const endDay = (e.process==='정제') ? windowEnd(e) : pcLastDay(e);
+            const st = await pcDeviceStatus(sh.device, e.start, endDay);
+            if(st !== 'ok'){ pend = e; break; }
+          }
+          if(pend) next.set(sh.id, { tag: '이번 주', ws: w.start, we: w.end, stage: pcStageText(pend) });
+          continue;
+        }
         if(!w.products.has(sh.product) || !w.months.has(`${sh.year}-${sh.month}`)) continue;
         const st = await pcDeviceStatus(sh.device, w.start, w.end);
         if(st === 'ok') continue; // 이번 주 분은 이미 작성됨 → 표시하지 않음
