@@ -2394,14 +2394,14 @@ function ledgerPageHtml(s, pIdx, totalPages){
         <table class="grid" data-page="${pIdx}">
           <thead>
             <tr>
-              <th style="width:9%">날짜</th>
+              <th style="width:15%;min-width:150px">날짜</th>
               <th style="width:8%">작업시작</th>
               <th style="width:8%">작업종료</th>
               <th style="width:12%">제조번호</th>
               <th style="width:13%">작업공정</th>
               <th style="width:11%">작업자</th>
               <th style="width:11%">확인자</th>
-              <th style="width:28%">비고</th>
+              <th style="width:22%">비고</th>
             </tr>
           </thead>
           <tbody class="grid-tbody" data-page="${pIdx}"></tbody>
@@ -3130,9 +3130,9 @@ function buildSheetXml(sheet){
         ? `${r.timeStart||''}${(r.timeStart&&r.timeEnd)?'~':''}${r.timeEnd||''}`
         : '';
       rowsXml.push(`<row r="${rn}" spans="1:13" ht="${rowHeightForData}" customHeight="1" x14ac:dyDescent="0.3">`
-        + xCell(`A${rn}`,'2', r.date || '')
+        + xCell(`A${rn}`,'13', r.date || '')
         + xCell(`B${rn}`,'13', timeRange)
-        + xCell(`C${rn}`,'13', r.mfgNo || '')
+        + xCell(`C${rn}`,'18', r.mfgNo || '')
         + xCell(`D${rn}`,'13','')
         + xCell(`E${rn}`,'13', r.process || '')
         + xCell(`F${rn}`,'13', r.worker ? displayName(r.worker) : '')
@@ -3209,7 +3209,7 @@ function buildSheetXml(sheet){
   const rowBreaksXml = (isPaginated && pageBreakRows.length)
     ? `<rowBreaks count="${pageBreakRows.length}" manualBreakCount="${pageBreakRows.length}">${pageBreakRows.map(r=>`<brk id="${r}" max="16383" man="1"/>`).join('')}</rowBreaks>`
     : '';
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac xr xr2 xr3" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision" xmlns:xr2="http://schemas.microsoft.com/office/spreadsheetml/2015/revision2" xmlns:xr3="http://schemas.microsoft.com/office/spreadsheetml/2016/revision3" xr:uid="{00000000-0001-0000-0000-000000000000}"><sheetPr/><dimension ref="A1:M${totalRows}"/><sheetViews><sheetView tabSelected="1" zoomScale="100" zoomScaleNormal="100" workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="16.5" x14ac:dyDescent="0.3"/><cols><col min="1" max="1" width="10.92" customWidth="1"/><col min="2" max="2" width="11.7" customWidth="1"/><col min="3" max="4" width="5.85" customWidth="1"/><col min="5" max="5" width="7.8" customWidth="1"/><col min="6" max="7" width="7.02" customWidth="1"/><col min="8" max="13" width="7.8" customWidth="1"/></cols><sheetData>${rowsXml.join('')}</sheetData>${mergeCellsXml}<phoneticPr fontId="1" type="noConversion"/><printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>${pageSetupXml}<headerFooter differentFirst="0" scaleWithDoc="1" alignWithMargins="1"></headerFooter>${rowBreaksXml}</worksheet>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac xr xr2 xr3" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision" xmlns:xr2="http://schemas.microsoft.com/office/spreadsheetml/2015/revision2" xmlns:xr3="http://schemas.microsoft.com/office/spreadsheetml/2016/revision3" xr:uid="{00000000-0001-0000-0000-000000000000}"><sheetPr/><dimension ref="A1:M${totalRows}"/><sheetViews><sheetView tabSelected="1" zoomScale="100" zoomScaleNormal="100" workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="16.5" x14ac:dyDescent="0.3"/><cols><col min="1" max="1" width="15" customWidth="1"/><col min="2" max="2" width="11.7" customWidth="1"/><col min="3" max="4" width="8.5" customWidth="1"/><col min="5" max="5" width="7.8" customWidth="1"/><col min="6" max="7" width="7.02" customWidth="1"/><col min="8" max="13" width="6.12" customWidth="1"/></cols><sheetData>${rowsXml.join('')}</sheetData>${mergeCellsXml}<phoneticPr fontId="1" type="noConversion"/><printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>${pageSetupXml}<headerFooter differentFirst="0" scaleWithDoc="1" alignWithMargins="1"></headerFooter>${rowBreaksXml}</worksheet>`;
 }
 
 /* ============================================================
@@ -3300,6 +3300,7 @@ function sanitizeSheetName(name){
 async function buildMultiSheetWorkbookBlob(sheetList){
   const zip = await JSZip.loadAsync(base64ToUint8Array(TEMPLATE_XLSX_BASE64));
 
+  // (제조번호 칸은 줄임 서식을 쓰지 않고 칸 너비를 넓혀 다른 글자와 같은 크기로 표시)
   // 제조번호처럼 칸보다 글자가 길어질 수 있는 셀은 칸을 벗어나지 않도록
   // "셀에 맞게 줄임(shrinkToFit)" 스타일을 하나 추가 (워크북 전체에서 공유되는 서식이라 한 번만 추가)
   let stylesXml = await zip.file('xl/styles.xml').async('string');
@@ -3897,6 +3898,80 @@ function pcUpdateWeekNote(){
   el.innerHTML = `📅 작성할 기록 — ${parts.join(' · ')}. 작성하면 이 목록에서 빠집니다.`;
 }
 
+/* ===== 이번 주 작업 표시: 로트번호 + 차수/기기별 완료 규칙 ===== */
+
+// 일정 제목에서 6자리 로트번호 추출 (예: O0330RE-261002 정제 → 261002)
+function pcLotOfTitle(title){
+  const m = /(?:^|[^0-9])(\d{6})(?![0-9])/.exec(String(title||''));
+  return m ? m[1] : null;
+}
+
+// 한 줄이 날짜/작업시작/작업종료/제조번호/작업공정/작업자/확인자 7칸 모두 입력됐는지
+function pcRowFull(r){
+  return !!(r && r.date && r.timeStart && r.timeEnd && r.mfgNo && r.process && r.worker && r.checker);
+}
+
+// 기기 종류/차수별 완료 패턴 (규칙이 바뀌면 이 함수만 고치면 됨)
+//  반응기: 1차 '정제' / 2차 '정제,CS' (GP-A079는 1차도 '정제,CS')
+//  여과기: 1차 '여과,CS' / 2차(및 차수 없는 품목) '여과,여과,CS'
+//  건조기: '건조,CS'
+function pcStagePattern(product, device, ev){
+  const t = deviceTypeRank(device);            // 0=반응기, 1=여과기, 2=건조기
+  if(t === 0){
+    if(ev.gp) return ['정제','CS'];
+    return ev.stage === 1 ? ['정제'] : ['정제','CS'];
+  }
+  if(t === 1){
+    return ev.stage === 1 ? ['여과','CS'] : ['여과','여과','CS'];
+  }
+  return ['건조','CS'];
+}
+
+// 로트번호 일정: 그 로트의 첫 줄부터 패턴 순서대로 이어진 줄이 모두 7칸 입력돼 있으면 완료
+function pcLotDone(rows, lot, pattern){
+  pattern = pattern || ['정제','CS'];
+  for(let i = 0; i + pattern.length <= rows.length; i++){
+    const first = rows[i];
+    if(!first || String(first.mfgNo || '').indexOf(lot) === -1) continue;
+    let ok = true;
+    for(let j = 0; j < pattern.length; j++){
+      const r = rows[i+j];
+      if(!r || !pcRowFull(r) || r.process !== pattern[j]){ ok = false; break; }
+    }
+    if(ok) return true;
+  }
+  return false;
+}
+
+// 1차/2차 품목: 기록서 줄을 위에서부터 읽으며, 일정 순서대로 패턴이 몇 개 완성됐는지 센다
+async function pcCountStagesDone(device, spanStart, spanEnd, patterns){
+  const months = new Map();
+  for(let d = new Date(spanStart); d <= spanEnd; d.setDate(d.getDate()+1)){
+    months.set(`${d.getFullYear()}-${d.getMonth()+1}`, [d.getFullYear(), d.getMonth()+1]);
+  }
+  const keys = [...months.values()].sort((a,b)=> (a[0]-b[0]) || (a[1]-b[1]));
+  let stage = 0, matched = 0;
+  for(const [y, m] of keys){
+    const meta = pcSheetMeta(y, m, device);
+    if(!meta) continue;
+    const data = await pcLoadSheet(meta.id);
+    const rows = data && Array.isArray(data.rows) ? data.rows : [];
+    for(const r of rows){
+      if(stage >= patterns.length) return stage;
+      if(!rowHasData(r)) continue;                       // 빈 줄은 건너뜀
+      const rg = pcParseRowDate(r.date);
+      if(rg && rg.end < spanStart) continue;             // 이번 일정 이전의 예전 작업은 제외
+      const pat = patterns[stage];
+      const ok = pcRowFull(r);
+      if(ok && r.process === pat[matched]) matched++;
+      else if(ok && r.process === pat[0]) matched = 1;
+      else matched = 0;
+      if(matched === pat.length){ stage++; matched = 0; }
+    }
+  }
+  return stage;
+}
+
 async function pcEnsureThisWeek(){
   if(pcWeekBusy) return;
   pcWeekBusy = true;
@@ -3910,7 +3985,7 @@ async function pcEnsureThisWeek(){
       const weeks = [0].map(k=>{
         const start = new Date(ws0); start.setDate(start.getDate()+7*k);
         const end = new Date(start); end.setDate(end.getDate()+6);
-        return { start, end, products:new Set(), months:new Set(), stageEvents:[] };
+        return { start, end, products:new Set(), months:new Set(), stageEvents:[], lotEvents:[] };
       });
       weeks.forEach(w=>{ for(let d=new Date(w.start); d<=w.end; d.setDate(d.getDate()+1)) w.months.add(`${d.getFullYear()}-${d.getMonth()+1}`); });
       const endEx = new Date(weeks[0].end); endEx.setDate(endEx.getDate()+1);
@@ -3926,12 +4001,22 @@ async function pcEnsureThisWeek(){
         const base = pcBaseProductOfTitle(title);
         if(!base){ console.warn('[캘린더] 품목 코드를 찾지 못해 건너뜀:', title); return; }
         const r = pcEventRange(ev); if(!r) return;
+
+        // 1차/2차 정제가 있는 품목: 일정 한 건씩 따로 보관
         if(PC_STAGED_PRODUCTS.indexOf(base) !== -1){
-          // 1차/2차 정제가 있는 품목: 일정 한 건씩 따로 보관
           const evInfo = { base, process: pcProcessOfTitle(title), stage: pcStageOfTitle(title), gp: pcIsGpTitle(title), start: r.start, end: r.end };
           weeks.forEach(w=>{ if(r.start <= w.end && r.end > w.start) w.stageEvents.push(evInfo); });
           return;
         }
+
+        // 제목에 6자리 로트번호가 있는 일정: 로트별로 따로 보관
+        const lot = pcLotOfTitle(title);
+        if(lot){
+          const lotInfo = { base, lot, process: pcProcessOfTitle(title), stage: null, gp: false, start: r.start, end: r.end };
+          weeks.forEach(w=>{ if(r.start <= w.end && r.end > w.start) w.lotEvents.push(lotInfo); });
+          return;
+        }
+
         weeks.forEach(w=>{ if(r.start <= w.end && r.end > w.start) w.products.add(base); });
       });
       pcWeekInfo = { weeks, loadedAt: Date.now() };
@@ -3942,32 +4027,42 @@ async function pcEnsureThisWeek(){
     for(const sh of sheetIndex){
       for(let k=0;k<pcWeekInfo.weeks.length;k++){
         const w = pcWeekInfo.weeks[k];
+
+        // (1) 1차/2차 품목: 완성된 패턴 개수만큼 앞 일정부터 완료로 보고, 다음 일정을 표시
         if(PC_STAGED_PRODUCTS.indexOf(sh.product) !== -1){
-          // 차수별(1차→2차) 순서대로: 이 기기를 쓰는 일정 중 기록서에 아직 날짜가 없는 가장 빠른 1건만 표시.
-          //  정제 일정의 "작성 확인 구간" = 그 일정 시작일 ~ 다음 정제 일정 시작 전날(마지막 일정은 이번 주 끝까지).
-          //  (여과기/건조기는 정제 다음 날 쓰는 경우가 있어 일정 날짜에 딱 맞지 않아도 구간 안이면 작성으로 본다)
-          const prodEvs = w.stageEvents.filter(e => e.base===sh.product);
-          const jeongje = prodEvs.filter(e => e.process==='정제').sort((a,b)=> a.start - b.start);
-          const windowEnd = (e)=>{
-            const nxt = jeongje.find(x => x.start > e.start);
-            if(nxt){ const d = new Date(nxt.start); d.setDate(d.getDate()-1); return d; }
-            const l = pcLastDay(e); return l > w.end ? l : new Date(w.end);
-          };
-          const mine = prodEvs
-            .filter(e => pcEventTouchesMonth(e, sh.year, sh.month) && pcStageUsesDevice(e, sh.device))
+          const mine = w.stageEvents
+            .filter(e => e.base===sh.product && pcEventTouchesMonth(e, sh.year, sh.month) && pcStageUsesDevice(e, sh.device))
             .sort((a,b)=> (a.start - b.start) || ((a.stage||0) - (b.stage||0)));
-          let pend = null;
-          for(const e of mine){
-            const endDay = (e.process==='정제') ? windowEnd(e) : pcLastDay(e);
-            const st = await pcDeviceStatus(sh.device, e.start, endDay);
-            if(st !== 'ok'){ pend = e; break; }
+          if(mine.length){
+            const patterns = mine.map(e => pcStagePattern(sh.product, sh.device, e));
+            let spanEnd = new Date(w.end);
+            mine.forEach(e=>{ const l = pcLastDay(e); if(l > spanEnd) spanEnd = l; });
+            const done = await pcCountStagesDone(sh.device, mine[0].start, spanEnd, patterns);
+            const pend = mine[done];
+            if(pend) next.set(sh.id, { tag: '이번 주', ws: w.start, we: w.end, stage: pcStageText(pend) });
           }
-          if(pend) next.set(sh.id, { tag: '이번 주', ws: w.start, we: w.end, stage: pcStageText(pend) });
           continue;
         }
+
+        // (2) 로트번호가 있는 일정(O0330/C383, O0731/LHT 등): 로트 첫 줄부터 패턴이 완성돼야 완료
+        const lotEvs = w.lotEvents.filter(e =>
+          e.base===sh.product && pcEventTouchesMonth(e, sh.year, sh.month) && pcStageUsesDevice(e, sh.device));
+        if(lotEvs.length){
+          const data = await pcLoadSheet(sh.id);
+          const rows = data && Array.isArray(data.rows) ? data.rows : [];
+          const pend = lotEvs
+            .sort((a,b)=> a.start - b.start)
+            .find(e => !pcLotDone(rows, e.lot, pcStagePattern(sh.product, sh.device, e)));
+          if(pend){
+            next.set(sh.id, { tag: '이번 주', ws: w.start, we: w.end, stage: `${pend.lot} ${pend.process || ''}`.trim() });
+          }
+          continue;
+        }
+
+        // (3) 로트번호도 차수도 없는 일정: 기존 방식(그 주에 날짜 행이 있으면 작성됨)
         if(!w.products.has(sh.product) || !w.months.has(`${sh.year}-${sh.month}`)) continue;
         const st = await pcDeviceStatus(sh.device, w.start, w.end);
-        if(st === 'ok') continue; // 이번 주 분은 이미 작성됨 → 표시하지 않음
+        if(st === 'ok') continue;
         next.set(sh.id, { tag: '이번 주', ws: w.start, we: w.end });
         break;
       }
@@ -3976,6 +4071,7 @@ async function pcEnsureThisWeek(){
     refreshRecordList();
   }catch(e){
     console.error('이번 주 작업 품목 확인 실패', e);
+    toast('캘린더 연동 실패: ' + (e && e.message ? e.message : e), true);
   }finally{
     pcWeekBusy = false;
   }
